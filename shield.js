@@ -1,1 +1,74 @@
-// (c) 2026 Vivash Singh - All Rights Reserved!function(){"use strict";function e(){try{document.documentElement.style.opacity="0",document.body.innerHTML="",window.location.replace("about:blank")}catch(e){}}document.addEventListener("contextmenu",function(e){return e.preventDefault(),!1}),document.addEventListener("selectstart",function(e){return e.preventDefault(),!1}),document.addEventListener("dragstart",function(e){return e.preventDefault(),!1}),document.addEventListener("keydown",function(e){var t=e.keyCode||e.which;return 123===t||e.ctrlKey&&e.shiftKey&&[73,74,67,75].indexOf(t)>-1||e.ctrlKey&&[85,83].indexOf(t)>-1||e.metaKey&&e.altKey&&73===t?(e.preventDefault(),!1):void 0});var t=!1;setInterval(function(){var n=window.outerWidth-window.innerWidth,o=window.outerHeight-window.innerHeight;n>160||o>160?t||(t=!0,e()):t=!1},500),function(){var t=function(){};t.toString=function(){return e(),""};try{console.log(t)}catch(e){}}();var n,o=!1,r=new Image;Object.defineProperty(r,"id",{get:function(){o||(o=!0,e())}});try{console.log(r)}catch(e){}setInterval(function(){for(var t=performance.now(),n=0;n<1e3;n++);performance.now()-t>50&&e()},700),n=console.log,console.log=function(){return arguments[0]&&"object"==typeof arguments[0]&&e(),n.apply(console,arguments)};var c=document.scripts.length;setInterval(function(){document.scripts.length>c+3&&e()},2e3)}();
+// (c) 2026 Vivash Singh - All Rights Reserved
+(function(){
+  "use strict";
+
+  function _wipe(){
+    try{
+      document.documentElement.style.opacity="0";
+      document.body.innerHTML="";
+      window.location.replace("about:blank");
+    }catch(e){}
+  }
+
+  // Wait for DOM before attaching anything
+  function _init(){
+
+    // 1. UI PROTECTION
+    document.addEventListener("contextmenu",function(e){e.preventDefault();return false;});
+    document.addEventListener("selectstart",function(e){e.preventDefault();return false;});
+    document.addEventListener("dragstart",function(e){e.preventDefault();return false;});
+    document.addEventListener("keydown",function(e){
+      var k=e.keyCode||e.which;
+      if(k===123){e.preventDefault();return false;}
+      if(e.ctrlKey&&e.shiftKey&&[73,74,67,75].indexOf(k)>-1){e.preventDefault();return false;}
+      if(e.ctrlKey&&[85,83].indexOf(k)>-1){e.preventDefault();return false;}
+      if(e.metaKey&&e.altKey&&k===73){e.preventDefault();return false;}
+    });
+
+    // 2. WINDOW SIZE PANEL DETECTION — only fires after page is fully loaded
+    var _po=false;
+    window.addEventListener("load",function(){
+      setInterval(function(){
+        var wd=window.outerWidth-window.innerWidth;
+        var hd=window.outerHeight-window.innerHeight;
+        if(wd>200||hd>200){
+          if(!_po){_po=true;_wipe();}
+        }else{_po=false;}
+      },1000);
+    });
+
+    // 3. CONSOLE toString TRAP — delayed so it doesn't fire at load
+    setTimeout(function(){
+      var _c=function(){};
+      _c.toString=function(){_wipe();return "";};
+      try{(function(x){})((_c,console.log(_c)));}catch(e){}
+    },3000);
+
+    // 4. CONSOLE PROPERTY GETTER — delayed
+    setTimeout(function(){
+      var _dd=false;
+      var _img=new Image();
+      Object.defineProperty(_img,"id",{get:function(){
+        if(!_dd){_dd=true;_wipe();}
+      }});
+      try{console.log(_img);}catch(e){}
+    },3000);
+
+    // 5. SCRIPT INTEGRITY MONITOR
+    window.addEventListener("load",function(){
+      var _bc=document.scripts.length;
+      setInterval(function(){
+        if(document.scripts.length>_bc+5){_wipe();}
+      },3000);
+    });
+
+  }
+
+  // Run after DOM ready
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",_init);
+  }else{
+    _init();
+  }
+
+})();
