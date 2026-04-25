@@ -30,7 +30,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add components/marketing.html components/photography.html components/instagram.html
           git diff --cached --quiet || git commit -m "Auto-generate section HTML [skip ci]"
-          git push
+          git push 
       
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
