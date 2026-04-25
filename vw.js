@@ -1,0 +1,2 @@
+/* © 2026 Vivash Singh — All Rights Reserved */// © 2026 Vivash Singh — All Rights Reserved
+(function(){if(typeof WEBDEV_VIDEOS==="undefined")return;var c=document.getElementById("dev-section");if(!c)return;var h="";WEBDEV_VIDEOS.forEach(function(v){h+='<div class="dev-item"><div class="dev-video-wrapper"><iframe src="https://www.youtube.com/embed/'+v.id+'?rel=0&modestbranding=1" frameborder="0" allowfullscreen loading="lazy"></iframe></div></div>';});var w=c.querySelector(".dev-stack");if(w)w.innerHTML=h;})();
