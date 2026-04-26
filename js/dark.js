@@ -1,4 +1,154 @@
-// (c) 2026 Vivash Singh - All Rights Reserved!function(){"use strict";let e,t,n,r,i,o,a,s,u,c,l,v,f,m=document.getElementById("fluidCanvas"),d=null;function g(){if(m){r=[],i=[],n={TEXTURE_DOWNSAMPLE:0,DENSITY_DISSIPATION:.98,VELOCITY_DISSIPATION:.99,PRESSURE_DISSIPATION:.85,PRESSURE_ITERATIONS:20,CURL:8,SPLAT_RADIUS:.004,DISTORTION_INTENSITY:.1,BLOB_SOFTNESS:.45},r.push(new N);var g=function(e){var t={alpha:!1,depth:!1,stencil:!1,antialias:!0,preserveDrawingBuffer:!1},n=e.getContext("webgl2",t),r=!!n;r||(n=e.getContext("webgl",t)||e.getContext("experimental-webgl",t));var i=null,o=null;function a(e,t,r){if(!function(e,t,r){var i=n.createTexture();n.bindTexture(n.TEXTURE_2D,i),n.texParameteri(n.TEXTURE_2D,n.TEXTURE_MIN_FILTER,n.NEAREST),n.texParameteri(n.TEXTURE_2D,n.TEXTURE_MAG_FILTER,n.NEAREST),n.texParameteri(n.TEXTURE_2D,n.TEXTURE_WRAP_S,n.CLAMP_TO_EDGE),n.texParameteri(n.TEXTURE_2D,n.TEXTURE_WRAP_T,n.CLAMP_TO_EDGE),n.texImage2D(n.TEXTURE_2D,0,e,4,4,0,t,r,null);var o=n.createFramebuffer();n.bindFramebuffer(n.FRAMEBUFFER,o),n.framebufferTexture2D(n.FRAMEBUFFER,n.COLOR_ATTACHMENT0,n.TEXTURE_2D,i,0);var a=n.checkFramebufferStatus(n.FRAMEBUFFER);return n.deleteFramebuffer(o),n.deleteTexture(i),a===n.FRAMEBUFFER_COMPLETE}(e,t,r))switch(e){case n.R16F:return a(n.RG16F,n.RG,r);case n.RG16F:return a(n.RGBA16F,n.RGBA,r);default:return null}return{internalFormat:e,format:t}}r?(n.getExtension("EXT_color_buffer_float"),o=n.getExtension("OES_texture_float_linear")):(i=n.getExtension("OES_texture_half_float"),o=n.getExtension("OES_texture_half_float_linear")),n.clearColor(0,0,0,1);var s=r?n.HALF_FLOAT:i?i.HALF_FLOAT_OES:null;s||console.warn("Half float textures not supported, falling back to byte format. Effect may look less smooth.");var u=a(r?n.RGBA16F:n.RGBA,n.RGBA,s),c=a(r?n.RG16F:n.RGBA,n.RG,s),l=a(r?n.R16F:n.RGBA,n.RED,s);return{gl:n,ext:{formatRGBA:u,formatRG:c,formatR:l,halfFloatTexType:s,supportLinearFiltering:o}}}(m);e=g.gl,t=g.ext;var E=function(){function t(t,n){if(this.uniforms={},this.program=e.createProgram(),e.attachShader(this.program,t),e.attachShader(this.program,n),e.linkProgram(this.program),!e.getProgramParameter(this.program,e.LINK_STATUS))throw e.getProgramInfoLog(this.program);for(var r=e.getProgramParameter(this.program,e.ACTIVE_UNIFORMS),i=0;i<r;i++){var o=e.getActiveUniform(this.program,i).name;this.uniforms[o]=e.getUniformLocation(this.program,o)}}return t.prototype.bind=function(){e.useProgram(this.program)},t}(),h=X(e.VERTEX_SHADER,"
+(function() {
+    'use strict';
+
+    // ========== FLUID SIMULATION – dark version ==========
+    let canvas = document.getElementById('fluidCanvas');
+    let animationFrame = null;
+    let gl, ext, config, pointers, splatStack;
+    let textureWidth, textureHeight, velocity, divergence, curl, pressure;
+    let lastTime, startTime;
+
+    function initFluid() {
+        if (!canvas) return;
+
+        // Reinitialize all variables (in case canvas was replaced)
+        pointers = [];
+        splatStack = [];
+
+        config = {
+            TEXTURE_DOWNSAMPLE: 0,
+            DENSITY_DISSIPATION: 0.98,
+            VELOCITY_DISSIPATION: 0.99,
+            PRESSURE_DISSIPATION: 0.85,
+            PRESSURE_ITERATIONS: 20,
+            CURL: 8,
+            SPLAT_RADIUS: 0.004,
+            DISTORTION_INTENSITY: 0.1,
+            BLOB_SOFTNESS: 0.45
+        };
+
+        function getWebGLContext(canvas) {
+            var params = { alpha: false, depth: false, stencil: false, antialias: true, preserveDrawingBuffer: false };
+            var gl = canvas.getContext('webgl2', params);
+            var isWebGL2 = !!gl;
+            if (!isWebGL2) gl = canvas.getContext('webgl', params) || canvas.getContext('experimental-webgl', params);
+
+            var halfFloat = null;
+            var supportLinearFiltering = null;
+            if (isWebGL2) {
+                gl.getExtension('EXT_color_buffer_float');
+                supportLinearFiltering = gl.getExtension('OES_texture_float_linear');
+            } else {
+                halfFloat = gl.getExtension('OES_texture_half_float');
+                supportLinearFiltering = gl.getExtension('OES_texture_half_float_linear');
+            }
+
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+            function supportRenderTextureFormat(internalFormat, format, type) {
+                var texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, 4, 4, 0, format, type, null);
+
+                var fbo = gl.createFramebuffer();
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+                var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+                gl.deleteFramebuffer(fbo);
+                gl.deleteTexture(texture);
+                return status === gl.FRAMEBUFFER_COMPLETE;
+            }
+
+            function getSupportedFormat(internalFormat, format, type) {
+                if (!supportRenderTextureFormat(internalFormat, format, type)) {
+                    switch (internalFormat) {
+                        case gl.R16F: return getSupportedFormat(gl.RG16F, gl.RG, type);
+                        case gl.RG16F: return getSupportedFormat(gl.RGBA16F, gl.RGBA, type);
+                        default: return null;
+                    }
+                }
+                return { internalFormat: internalFormat, format: format };
+            }
+
+            var halfFloatTexType = isWebGL2 ? gl.HALF_FLOAT : (halfFloat ? halfFloat.HALF_FLOAT_OES : null);
+            if (!halfFloatTexType) {
+                console.warn('Half float textures not supported, falling back to byte format. Effect may look less smooth.');
+            }
+
+            var formatRGBA = getSupportedFormat(isWebGL2 ? gl.RGBA16F : gl.RGBA, gl.RGBA, halfFloatTexType);
+            var formatRG = getSupportedFormat(isWebGL2 ? gl.RG16F : gl.RGBA, gl.RG, halfFloatTexType);
+            var formatR = getSupportedFormat(isWebGL2 ? gl.R16F : gl.RGBA, gl.RED, halfFloatTexType);
+
+            return {
+                gl: gl,
+                ext: {
+                    formatRGBA: formatRGBA,
+                    formatRG: formatRG,
+                    formatR: formatR,
+                    halfFloatTexType: halfFloatTexType,
+                    supportLinearFiltering: supportLinearFiltering
+                }
+            };
+        }
+
+        function pointerPrototype() {
+            this.id = -1;
+            this.x = 0;
+            this.y = 0;
+            this.dx = 0;
+            this.dy = 0;
+            this.down = false;
+            this.moved = false;
+            this.color = [0.5, 0.5, 0.5];
+        }
+
+        pointers.push(new pointerPrototype());
+
+        var _getWebGLContext = getWebGLContext(canvas);
+        gl = _getWebGLContext.gl;
+        ext = _getWebGLContext.ext;
+
+        var GLProgram = function () {
+            function GLProgram(vertexShader, fragmentShader) {
+                this.uniforms = {};
+                this.program = gl.createProgram();
+
+                gl.attachShader(this.program, vertexShader);
+                gl.attachShader(this.program, fragmentShader);
+                gl.linkProgram(this.program);
+
+                if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw gl.getProgramInfoLog(this.program);
+
+                var uniformCount = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+                for (var i = 0; i < uniformCount; i++) {
+                    var uniformName = gl.getActiveUniform(this.program, i).name;
+                    this.uniforms[uniformName] = gl.getUniformLocation(this.program, uniformName);
+                }
+            }
+
+            GLProgram.prototype.bind = function () {
+                gl.useProgram(this.program);
+            };
+
+            return GLProgram;
+        }();
+
+        function compileShader(type, source) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(shader);
+
+            return shader;
+        }
+
+        var baseVertexShader = compileShader(gl.VERTEX_SHADER, `
             precision highp float;
             attribute vec2 aPosition;
             varying vec2 vUv;
@@ -15,7 +165,9 @@
                 vB = vUv - vec2(0.0, texelSize.y);
                 gl_Position = vec4(aPosition, 0.0, 1.0);
             }
-        "),p=X(e.FRAGMENT_SHADER,"
+        `);
+
+        var gradientDisplayShaderSource = `
             precision highp float;
             precision mediump sampler2D;
 
@@ -60,13 +212,19 @@
 
                 gl_FragColor = vec4(finalColor, 1.0);
             }
-        "),T=X(e.FRAGMENT_SHADER,"
+        `;
+
+        var gradientDisplayShader = compileShader(gl.FRAGMENT_SHADER, gradientDisplayShaderSource);
+
+        // Other shaders (abbreviated – same as before) ...
+        var clearShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             uniform sampler2D uTexture;
             uniform float value;
             void main () { gl_FragColor = value * texture2D(uTexture, vUv); }
-        "),y=X(e.FRAGMENT_SHADER,"
+        `);
+        var splatShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             uniform sampler2D uTarget;
@@ -81,7 +239,8 @@
                 vec3 base = texture2D(uTarget, vUv).xyz;
                 gl_FragColor = vec4(base + splat, 1.0);
             }
-        "),x=X(e.FRAGMENT_SHADER,"
+        `);
+        var advectionManualFilteringShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             uniform sampler2D uVelocity;
@@ -106,7 +265,8 @@
                 gl_FragColor = dissipation * bilerp(uSource, coord);
                 gl_FragColor.a = 1.0;
             }
-        "),R=X(e.FRAGMENT_SHADER,"
+        `);
+        var advectionShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             uniform sampler2D uVelocity;
@@ -119,7 +279,8 @@
                 gl_FragColor = dissipation * texture2D(uSource, coord);
                 gl_FragColor.a = 1.0;
             }
-        "),b=X(e.FRAGMENT_SHADER,"
+        `);
+        var divergenceShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             varying vec2 vL;
@@ -143,7 +304,8 @@
                 float div = 0.5 * (R - L + T - B);
                 gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
             }
-        "),S=X(e.FRAGMENT_SHADER,"
+        `);
+        var curlShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             varying vec2 vL;
@@ -159,7 +321,8 @@
                 float vorticity = R - L - T + B;
                 gl_FragColor = vec4(vorticity, 0.0, 0.0, 1.0);
             }
-        "),A=X(e.FRAGMENT_SHADER,"
+        `);
+        var vorticityShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             varying vec2 vT;
@@ -177,7 +340,8 @@
                 vec2 vel = texture2D(uVelocity, vUv).xy;
                 gl_FragColor = vec4(vel + force * dt, 0.0, 1.0);
             }
-        "),D=X(e.FRAGMENT_SHADER,"
+        `);
+        var pressureShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             varying vec2 vL;
@@ -197,7 +361,8 @@
                 float pressure = (L + R + B + T - divergence) * 0.25;
                 gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
             }
-        "),w=X(e.FRAGMENT_SHADER,"
+        `);
+        var gradientSubtractShader = compileShader(gl.FRAGMENT_SHADER, `
             precision highp float;
             varying vec2 vUv;
             varying vec2 vL;
@@ -216,7 +381,524 @@
                 velocity.xy -= vec2(R - L, T - B);
                 gl_FragColor = vec4(velocity, 0.0, 1.0);
             }
-        "),_=(e.bindBuffer(e.ARRAY_BUFFER,e.createBuffer()),e.bufferData(e.ARRAY_BUFFER,new Float32Array([-1,-1,-1,1,1,1,1,-1]),e.STATIC_DRAW),e.bindBuffer(e.ELEMENT_ARRAY_BUFFER,e.createBuffer()),e.bufferData(e.ELEMENT_ARRAY_BUFFER,new Uint16Array([0,1,2,0,2,3]),e.STATIC_DRAW),e.vertexAttribPointer(0,2,e.FLOAT,!1,0,0),e.enableVertexAttribArray(0),function(t){e.bindFramebuffer(e.FRAMEBUFFER,t),e.drawElements(e.TRIANGLES,6,e.UNSIGNED_SHORT,0)}),L=new E(h,T),F=new E(h,p),U=new E(h,y),B=new E(h,t.supportLinearFiltering?R:x),I=new E(h,b),P=new E(h,S),C=new E(h,A),M=new E(h,D),O=new E(h,w);V(),v=Date.now(),f=Date.now(),m.addEventListener("mouseenter",e=>{r[0].down=!0,r[0].moved=!1,r[0].x=e.offsetX,r[0].y=e.offsetY,r[0].dx=0,r[0].dy=0}),m.addEventListener("mousemove",e=>{r[0].moved=r[0].down,r[0].dx=2*(e.offsetX-r[0].x),r[0].dy=2*(e.offsetY-r[0].y),r[0].x=e.offsetX,r[0].y=e.offsetY}),m.addEventListener("mouseleave",()=>{r[0].down=!1,r[0].moved=!1}),m.addEventListener("touchmove",function(e){e.preventDefault();for(var t=e.targetTouches,n=0;n<t.length;n++){var i=r[n];i.moved=i.down,i.dx=2*(t[n].pageX-i.x),i.dy=2*(t[n].pageY-i.y),i.x=t[n].pageX,i.y=t[n].pageY}},!1),m.addEventListener("touchstart",function(e){e.preventDefault();for(var t=e.targetTouches,n=0;n<t.length;n++)n>=r.length&&r.push(new N),r[n].id=t[n].identifier,r[n].down=!0,r[n].x=t[n].pageX,r[n].y=t[n].pageY}),window.addEventListener("touchend",function(e){for(var t=e.changedTouches,n=0;n<t.length;n++)for(var i=0;i<r.length;i++)t[n].identifier==r[i].id&&(r[i].down=!1)}),window.addEventListener("resize",function(){m.width=window.innerWidth,m.height=window.innerHeight,V()}),d=requestAnimationFrame(function t(){m.width==m.clientWidth&&m.height==m.clientHeight||(m.width=m.clientWidth,m.height=m.clientHeight,V());var i=Date.now(),g=Math.min((i-v)/1e3,.016);if(v=i,e.viewport(0,0,o,a),r.every(e=>!e.down)){var E=.001*i,h=.01*Math.sin(.5*E),p=.01*Math.cos(.3*E);k(.5*m.width,.5*m.height,h,p)}B.bind(),e.uniform2f(B.uniforms.texelSize,1/o,1/a),e.uniform1i(B.uniforms.uVelocity,s.read[2]),e.uniform1i(B.uniforms.uSource,s.read[2]),e.uniform1f(B.uniforms.dt,g),e.uniform1f(B.uniforms.dissipation,n.VELOCITY_DISSIPATION),_(s.write[1]),s.swap();for(var T=0;T<r.length;T++){var y=r[T];y.moved&&(k(y.x,y.y,.3*y.dx,.3*y.dy),y.moved=!1)}P.bind(),e.uniform2f(P.uniforms.texelSize,1/o,1/a),e.uniform1i(P.uniforms.uVelocity,s.read[2]),_(c[1]),C.bind(),e.uniform2f(C.uniforms.texelSize,1/o,1/a),e.uniform1i(C.uniforms.uVelocity,s.read[2]),e.uniform1i(C.uniforms.uCurl,c[2]),e.uniform1f(C.uniforms.curl,n.CURL),e.uniform1f(C.uniforms.dt,g),_(s.write[1]),s.swap(),I.bind(),e.uniform2f(I.uniforms.texelSize,1/o,1/a),e.uniform1i(I.uniforms.uVelocity,s.read[2]),_(u[1]),L.bind();var x=l.read[2];e.activeTexture(e.TEXTURE0+x),e.bindTexture(e.TEXTURE_2D,l.read[0]),e.uniform1i(L.uniforms.uTexture,x),e.uniform1f(L.uniforms.value,n.PRESSURE_DISSIPATION),_(l.write[1]),l.swap(),M.bind(),e.uniform2f(M.uniforms.texelSize,1/o,1/a),e.uniform1i(M.uniforms.uDivergence,u[2]),x=l.read[2],e.uniform1i(M.uniforms.uPressure,x),e.activeTexture(e.TEXTURE0+x);for(var R=0;R<n.PRESSURE_ITERATIONS;R++)e.bindTexture(e.TEXTURE_2D,l.read[0]),_(l.write[1]),l.swap();O.bind(),e.uniform2f(O.uniforms.texelSize,1/o,1/a),e.uniform1i(O.uniforms.uPressure,l.read[2]),e.uniform1i(O.uniforms.uVelocity,s.read[2]),_(s.write[1]),s.swap(),e.viewport(0,0,e.drawingBufferWidth,e.drawingBufferHeight),F.bind(),e.activeTexture(e.TEXTURE0+s.read[2]),e.bindTexture(e.TEXTURE_2D,s.read[0]),e.uniform1i(F.uniforms.uVelocity,s.read[2]),e.uniform1f(F.uniforms.uTime,i-f),e.uniform1f(F.uniforms.uDistortionIntensity,n.DISTORTION_INTENSITY),e.uniform1f(F.uniforms.uBlobSoftness,n.BLOB_SOFTNESS),e.uniform2f(F.uniforms.uResolution,m.width,m.height),_(null),d=requestAnimationFrame(t)})}function N(){this.id=-1,this.x=0,this.y=0,this.dx=0,this.dy=0,this.down=!1,this.moved=!1,this.color=[.5,.5,.5]}function X(t,n){var r=e.createShader(t);if(e.shaderSource(r,n),e.compileShader(r),!e.getShaderParameter(r,e.COMPILE_STATUS))throw e.getShaderInfoLog(r);return r}function V(){o=e.drawingBufferWidth>>n.TEXTURE_DOWNSAMPLE,a=e.drawingBufferHeight>>n.TEXTURE_DOWNSAMPLE;var r=t.halfFloatTexType,i=(t.formatRGBA,t.formatRG),v=t.formatR;s=H(0,o,a,i.internalFormat,i.format,r,t.supportLinearFiltering?e.LINEAR:e.NEAREST),u=G(4,o,a,v.internalFormat,v.format,r,e.NEAREST),c=G(5,o,a,v.internalFormat,v.format,r,e.NEAREST),l=H(6,o,a,v.internalFormat,v.format,r,e.NEAREST)}function G(t,n,r,i,o,a,s){e.activeTexture(e.TEXTURE0+t);var u=e.createTexture();e.bindTexture(e.TEXTURE_2D,u),e.texParameteri(e.TEXTURE_2D,e.TEXTURE_MIN_FILTER,s),e.texParameteri(e.TEXTURE_2D,e.TEXTURE_MAG_FILTER,s),e.texParameteri(e.TEXTURE_2D,e.TEXTURE_WRAP_S,e.CLAMP_TO_EDGE),e.texParameteri(e.TEXTURE_2D,e.TEXTURE_WRAP_T,e.CLAMP_TO_EDGE),e.texImage2D(e.TEXTURE_2D,0,i,n,r,0,o,a,null);var c=e.createFramebuffer();return e.bindFramebuffer(e.FRAMEBUFFER,c),e.framebufferTexture2D(e.FRAMEBUFFER,e.COLOR_ATTACHMENT0,e.TEXTURE_2D,u,0),e.viewport(0,0,n,r),e.clear(e.COLOR_BUFFER_BIT),[u,c,t]}function H(e,t,n,r,i,o,a){var s=G(e,t,n,r,i,o,a),u=G(e+1,t,n,r,i,o,a);return{get read(){return s},get write(){return u},swap:function(){var e=s;s=u,u=e}}}function k(t,r,i,o){U.bind(),e.uniform1i(U.uniforms.uTarget,s.read[2]),e.uniform1f(U.uniforms.aspectRatio,m.width/m.height),e.uniform2f(U.uniforms.point,t/m.width,1-r/m.height),e.uniform3f(U.uniforms.color,i,-o,1),e.uniform1f(U.uniforms.radius,n.SPLAT_RADIUS),_(s.write[1]),s.swap()}}function E(e,t,n=200,r=12,i=50){const o=document.getElementById(e),a=document.querySelectorAll(`#${t} .line`);if(!o||!a.length)return;let s=`M0,6 Q${n/2},6 ${n},6`,u=!0;function c(e,t){const c=o.getBoundingClientRect();if(e>=c.left&&e<=c.right&&t>=c.top&&t<=c.bottom){u=!1;const o=e-c.left,l=c.width,v=Math.min(1,Math.max(0,o/l))*n,f=r/2,m=t-c.top;if(Math.abs(m-f)<i){const e=`M0,${f} Q${v},${m} ${n},${f}`;a.forEach(t=>t.setAttribute("d",e))}else a[0].getAttribute("d")!==s&&(TweenMax.to(a[0],.3,{attr:{d:s},ease:Power2.easeOut}),TweenMax.to(a[1],.3,{attr:{d:s},ease:Power2.easeOut}))}else u||(u=!0,TweenMax.to(a[0],.5,{attr:{d:s},ease:Elastic.easeOut.config(1,.3)}),TweenMax.to(a[1],.5,{attr:{d:s},ease:Elastic.easeOut.config(1,.3)}))}document.addEventListener("mousemove",e=>c(e.clientX,e.clientY)),document.addEventListener("touchmove",e=>{e.touches.length&&c(e.touches[0].clientX,e.touches[0].clientY)}),document.addEventListener("touchend",()=>c(-1e3,-1e3))}let h=null;window.__currentTheme={init:function(){console.log("Dark theme init"),g(),function(){const e=document.querySelector(".image-container"),t=document.getElementById("prev"),n=document.getElementById("next");if(e&&t&&n){const a=Array.from(e.querySelectorAll("span")),s=a.length;if(0===s)return;const u=e.offsetWidth||300,c=360/s,l=Math.round(u/2/Math.tan(Math.PI/s)*1.5);a.forEach((e,t)=>{e.style.width=u+"px",e.style.height=u+"px",e.style.transform=`rotateY(${t*c}deg) translateZ(${l}px)`});let v=0;function f(t){v=(t%s+s)%s,e.style.transform=`rotateY(${-v*c}deg)`,a.forEach((e,t)=>e.classList.toggle("face-active",t===v))}f(0),t.addEventListener("click",()=>f(v-1)),n.addEventListener("click",()=>f(v+1));let m=0;e.addEventListener("touchstart",e=>{m=e.touches[0].clientX},{passive:!0}),e.addEventListener("touchend",e=>{const t=m-e.changedTouches[0].clientX;Math.abs(t)>40&&f(t>0?v+1:v-1)},{passive:!0})}const r=document.querySelector(".instagram-gallery");r&&r.querySelectorAll(".instagram-img-c").forEach(e=>{e.addEventListener("click",function(){if(this.classList.contains("active"))return;const e=this.offsetWidth,t=this.offsetHeight,n=this.getBoundingClientRect().left+window.scrollX,r=this.getBoundingClientRect().top+window.scrollY;document.querySelectorAll(".instagram-img-c.active").forEach(e=>{e.classList.remove("active"),e.classList.add("postactive"),setTimeout(()=>{e.classList.contains("postactive")&&e.classList.remove("postactive")},500)});const i=this.cloneNode(!0);i.style.width=e+"px",i.style.height=t+"px",i.style.position="fixed",i.style.top=r+"px",i.style.left=n+"px",i.classList.add("active"),document.body.appendChild(i),setTimeout(()=>{i.classList.add("positioned"),i.style.width="100%",i.style.height="100%",i.style.top="0",i.style.left="0",i.style.transition="all ease 400ms"},0),i.addEventListener("click",function(e){(e.target===this||e.target.closest(".instagram-img-w"))&&(this.classList.remove("positioned","active"),this.classList.add("postactive"),setTimeout(()=>{this.remove()},500))})})});document.querySelectorAll("video").forEach(e=>{e.addEventListener("mouseenter",()=>{e.play()}),e.addEventListener("mouseleave",()=>{e.pause(),e.currentTime=0}),e.addEventListener("touchstart",()=>{e.play()}),e.addEventListener("touchend",()=>{e.pause(),e.currentTime=0})});const i=document.getElementById("new-contact-form");i&&!i.dataset.listenerAttached&&(i.dataset.listenerAttached="true",i.addEventListener("submit",function(e){e.preventDefault();const t=document.querySelector('input[name="name"]').value,n=document.querySelector('input[name="email"]').value,r=document.querySelector('textarea[name="message"]').value;if(!t||!n||!r)return void alert("Please fill in all required fields");const i=new FormData(this);fetch(this.action,{method:"POST",body:i,headers:{Accept:"application/json"}}).then(e=>{e.ok?(alert("Thank you for your message! I will get back to you soon."),this.reset(),document.querySelectorAll(".floating-label-group select").forEach(e=>e.selectedIndex=0)):alert("There was an error sending your message. Please try again.")}).catch(e=>{console.error("Error:",e),alert("There was an error sending your message. Please try again.")})})),document.querySelectorAll('a[href^="#"]').forEach(e=>{e.addEventListener("click",function(e){e.preventDefault();const t=this.getAttribute("href");if("#"===t)return;const n=document.querySelector(t);n&&window.scrollTo({top:n.offsetTop-80,behavior:"smooth"})})}),window.addEventListener("scroll",()=>{let e="";document.querySelectorAll("section[id], div[id='home']").forEach(t=>{const n=t.offsetTop;window.scrollY>=n-150&&(e=t.getAttribute("id"))}),document.querySelectorAll(".nav a").forEach(t=>{const n=t.getAttribute("href");if(n&&n.startsWith("#")){const r=n.substring(1);t.classList.toggle("active",r===e)}})}),document.querySelectorAll(".nav a, .btn, .contact-btn, .instagram-img-c, .animation-card, .portfolio-card, .dev-item, .footer a").forEach(e=>{e.addEventListener("mousedown",function(e){e.stopPropagation()}),e.addEventListener("touchstart",function(e){e.stopPropagation()})});const o=document.createElement("style");o.textContent="
+        `);
+
+        function initFramebuffers() {
+            textureWidth = gl.drawingBufferWidth >> config.TEXTURE_DOWNSAMPLE;
+            textureHeight = gl.drawingBufferHeight >> config.TEXTURE_DOWNSAMPLE;
+
+            var texType = ext.halfFloatTexType;
+            var rgba = ext.formatRGBA;
+            var rg = ext.formatRG;
+            var r = ext.formatR;
+
+            velocity = createDoubleFBO(0, textureWidth, textureHeight, rg.internalFormat, rg.format, texType, ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST);
+            divergence = createFBO(4, textureWidth, textureHeight, r.internalFormat, r.format, texType, gl.NEAREST);
+            curl = createFBO(5, textureWidth, textureHeight, r.internalFormat, r.format, texType, gl.NEAREST);
+            pressure = createDoubleFBO(6, textureWidth, textureHeight, r.internalFormat, r.format, texType, gl.NEAREST);
+        }
+
+        function createFBO(texId, w, h, internalFormat, format, type, param) {
+            gl.activeTexture(gl.TEXTURE0 + texId);
+            var texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, param);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, param);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
+
+            var fbo = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+            gl.viewport(0, 0, w, h);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            return [texture, fbo, texId];
+        }
+
+        function createDoubleFBO(texId, w, h, internalFormat, format, type, param) {
+            var fbo1 = createFBO(texId, w, h, internalFormat, format, type, param);
+            var fbo2 = createFBO(texId + 1, w, h, internalFormat, format, type, param);
+
+            return {
+                get read() { return fbo1; },
+                get write() { return fbo2; },
+                swap: function () { var temp = fbo1; fbo1 = fbo2; fbo2 = temp; }
+            };
+        }
+
+        var blit = (function () {
+            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(0);
+
+            return function (destination) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, destination);
+                gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+            };
+        })();
+
+        var clearProgram = new GLProgram(baseVertexShader, clearShader);
+        var gradientDisplayProgram = new GLProgram(baseVertexShader, gradientDisplayShader);
+        var splatProgram = new GLProgram(baseVertexShader, splatShader);
+        var advectionProgram = new GLProgram(baseVertexShader, ext.supportLinearFiltering ? advectionShader : advectionManualFilteringShader);
+        var divergenceProgram = new GLProgram(baseVertexShader, divergenceShader);
+        var curlProgram = new GLProgram(baseVertexShader, curlShader);
+        var vorticityProgram = new GLProgram(baseVertexShader, vorticityShader);
+        var pressureProgram = new GLProgram(baseVertexShader, pressureShader);
+        var gradientSubtractProgram = new GLProgram(baseVertexShader, gradientSubtractShader);
+
+        initFramebuffers();
+
+        lastTime = Date.now();
+        startTime = Date.now();
+
+        function update() {
+            resizeCanvas();
+
+            var currentTime = Date.now();
+            var dt = Math.min((currentTime - lastTime) / 1000, 0.016);
+            lastTime = currentTime;
+
+            gl.viewport(0, 0, textureWidth, textureHeight);
+
+            if (pointers.every(p => !p.down)) {
+                var t = currentTime * 0.001;
+                var forceX = Math.sin(t * 0.5) * 0.01;
+                var forceY = Math.cos(t * 0.3) * 0.01;
+                splatVelocity(canvas.width * 0.5, canvas.height * 0.5, forceX, forceY);
+            }
+
+            advectionProgram.bind();
+            gl.uniform2f(advectionProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+            gl.uniform1i(advectionProgram.uniforms.uVelocity, velocity.read[2]);
+            gl.uniform1i(advectionProgram.uniforms.uSource, velocity.read[2]);
+            gl.uniform1f(advectionProgram.uniforms.dt, dt);
+            gl.uniform1f(advectionProgram.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+            blit(velocity.write[1]);
+            velocity.swap();
+
+            for (var i = 0; i < pointers.length; i++) {
+                var pointer = pointers[i];
+                if (pointer.moved) {
+                    splatVelocity(pointer.x, pointer.y, pointer.dx * 0.3, pointer.dy * 0.3);
+                    pointer.moved = false;
+                }
+            }
+
+            curlProgram.bind();
+            gl.uniform2f(curlProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+            gl.uniform1i(curlProgram.uniforms.uVelocity, velocity.read[2]);
+            blit(curl[1]);
+
+            vorticityProgram.bind();
+            gl.uniform2f(vorticityProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+            gl.uniform1i(vorticityProgram.uniforms.uVelocity, velocity.read[2]);
+            gl.uniform1i(vorticityProgram.uniforms.uCurl, curl[2]);
+            gl.uniform1f(vorticityProgram.uniforms.curl, config.CURL);
+            gl.uniform1f(vorticityProgram.uniforms.dt, dt);
+            blit(velocity.write[1]);
+            velocity.swap();
+
+            divergenceProgram.bind();
+            gl.uniform2f(divergenceProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+            gl.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.read[2]);
+            blit(divergence[1]);
+
+            clearProgram.bind();
+            var pressureTexId = pressure.read[2];
+            gl.activeTexture(gl.TEXTURE0 + pressureTexId);
+            gl.bindTexture(gl.TEXTURE_2D, pressure.read[0]);
+            gl.uniform1i(clearProgram.uniforms.uTexture, pressureTexId);
+            gl.uniform1f(clearProgram.uniforms.value, config.PRESSURE_DISSIPATION);
+            blit(pressure.write[1]);
+            pressure.swap();
+
+            pressureProgram.bind();
+            gl.uniform2f(pressureProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+            gl.uniform1i(pressureProgram.uniforms.uDivergence, divergence[2]);
+            pressureTexId = pressure.read[2];
+            gl.uniform1i(pressureProgram.uniforms.uPressure, pressureTexId);
+            gl.activeTexture(gl.TEXTURE0 + pressureTexId);
+            for (var _i = 0; _i < config.PRESSURE_ITERATIONS; _i++) {
+                gl.bindTexture(gl.TEXTURE_2D, pressure.read[0]);
+                blit(pressure.write[1]);
+                pressure.swap();
+            }
+
+            gradientSubtractProgram.bind();
+            gl.uniform2f(gradientSubtractProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+            gl.uniform1i(gradientSubtractProgram.uniforms.uPressure, pressure.read[2]);
+            gl.uniform1i(gradientSubtractProgram.uniforms.uVelocity, velocity.read[2]);
+            blit(velocity.write[1]);
+            velocity.swap();
+
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+            gradientDisplayProgram.bind();
+            gl.activeTexture(gl.TEXTURE0 + velocity.read[2]);
+            gl.bindTexture(gl.TEXTURE_2D, velocity.read[0]);
+            gl.uniform1i(gradientDisplayProgram.uniforms.uVelocity, velocity.read[2]);
+            gl.uniform1f(gradientDisplayProgram.uniforms.uTime, currentTime - startTime);
+            gl.uniform1f(gradientDisplayProgram.uniforms.uDistortionIntensity, config.DISTORTION_INTENSITY);
+            gl.uniform1f(gradientDisplayProgram.uniforms.uBlobSoftness, config.BLOB_SOFTNESS);
+            gl.uniform2f(gradientDisplayProgram.uniforms.uResolution, canvas.width, canvas.height);
+            blit(null);
+
+            animationFrame = requestAnimationFrame(update);
+        }
+
+        function splatVelocity(x, y, dx, dy) {
+            splatProgram.bind();
+            gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read[2]);
+            gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
+            gl.uniform2f(splatProgram.uniforms.point, x / canvas.width, 1.0 - y / canvas.height);
+            gl.uniform3f(splatProgram.uniforms.color, dx, -dy, 1.0);
+            gl.uniform1f(splatProgram.uniforms.radius, config.SPLAT_RADIUS);
+            blit(velocity.write[1]);
+            velocity.swap();
+        }
+
+        function resizeCanvas() {
+            if (canvas.width != canvas.clientWidth || canvas.height != canvas.clientHeight) {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+                initFramebuffers();
+            }
+        }
+
+        canvas.addEventListener('mouseenter', (e) => {
+            pointers[0].down = true;
+            pointers[0].moved = false;
+            pointers[0].x = e.offsetX;
+            pointers[0].y = e.offsetY;
+            pointers[0].dx = 0;
+            pointers[0].dy = 0;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            pointers[0].moved = pointers[0].down;
+            pointers[0].dx = (e.offsetX - pointers[0].x) * 2.0;
+            pointers[0].dy = (e.offsetY - pointers[0].y) * 2.0;
+            pointers[0].x = e.offsetX;
+            pointers[0].y = e.offsetY;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            pointers[0].down = false;
+            pointers[0].moved = false;
+        });
+
+        canvas.addEventListener('touchmove', function (e) {
+            e.preventDefault();
+            var touches = e.targetTouches;
+            for (var i = 0; i < touches.length; i++) {
+                var pointer = pointers[i];
+                pointer.moved = pointer.down;
+                pointer.dx = (touches[i].pageX - pointer.x) * 2.0;
+                pointer.dy = (touches[i].pageY - pointer.y) * 2.0;
+                pointer.x = touches[i].pageX;
+                pointer.y = touches[i].pageY;
+            }
+        }, false);
+
+        canvas.addEventListener('touchstart', function (e) {
+            e.preventDefault();
+            var touches = e.targetTouches;
+            for (var i = 0; i < touches.length; i++) {
+                if (i >= pointers.length) pointers.push(new pointerPrototype());
+
+                pointers[i].id = touches[i].identifier;
+                pointers[i].down = true;
+                pointers[i].x = touches[i].pageX;
+                pointers[i].y = touches[i].pageY;
+            }
+        });
+
+        window.addEventListener('touchend', function (e) {
+            var touches = e.changedTouches;
+            for (var i = 0; i < touches.length; i++) {
+                for (var j = 0; j < pointers.length; j++) {
+                    if (touches[i].identifier == pointers[j].id) pointers[j].down = false;
+                }
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initFramebuffers();
+        });
+
+        // Start animation
+        animationFrame = requestAnimationFrame(update);
+    }
+
+    function stopFluid() {
+        if (animationFrame) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+        }
+        // Remove event listeners if needed (we'll rely on reinitialization)
+    }
+
+    // ========== ELASTIC LINES ==========
+    function initElasticLine(wrapperId, lineId, svgWidth = 200, svgHeight = 12, attractorRange = 50) {
+        const wrapper = document.getElementById(wrapperId);
+        const linePaths = document.querySelectorAll(`#${lineId} .line`);
+        if (!wrapper || !linePaths.length) return;
+
+        let initialPath = `M0,6 Q${svgWidth/2},6 ${svgWidth},6`;
+        let lastMouseOutside = true;
+
+        function updateLine(clientX, clientY) {
+            const rect = wrapper.getBoundingClientRect();
+            const inside = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+
+            if (inside) {
+                lastMouseOutside = false;
+                const relX = clientX - rect.left;
+                const width = rect.width;
+                const t = Math.min(1, Math.max(0, relX / width));
+                const ctrlX = t * svgWidth;
+                const centerY = svgHeight / 2;
+                const attractY = clientY - rect.top;
+                if (Math.abs(attractY - centerY) < attractorRange) {
+                    const newPath = `M0,${centerY} Q${ctrlX},${attractY} ${svgWidth},${centerY}`;
+                    linePaths.forEach(line => line.setAttribute('d', newPath));
+                } else {
+                    if (linePaths[0].getAttribute('d') !== initialPath) {
+                        TweenMax.to(linePaths[0], 0.3, {attr: {d: initialPath}, ease: Power2.easeOut});
+                        TweenMax.to(linePaths[1], 0.3, {attr: {d: initialPath}, ease: Power2.easeOut});
+                    }
+                }
+            } else {
+                if (!lastMouseOutside) {
+                    lastMouseOutside = true;
+                    TweenMax.to(linePaths[0], 0.5, {attr: {d: initialPath}, ease: Elastic.easeOut.config(1, 0.3)});
+                    TweenMax.to(linePaths[1], 0.5, {attr: {d: initialPath}, ease: Elastic.easeOut.config(1, 0.3)});
+                }
+            }
+        }
+
+        document.addEventListener('mousemove', (e) => updateLine(e.clientX, e.clientY));
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length) updateLine(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        document.addEventListener('touchend', () => updateLine(-1000, -1000));
+    }
+
+    // ========== PORTFOLIO INTERACTIONS ==========
+    function initPortfolio() {
+        // Marketing, photography and instagram are auto-generated by generate-marketing.js
+
+        // Photography 3D cube – dynamic, works with any number of images
+        const imageContainerEl = document.querySelector(".image-container");
+        const prevEl = document.getElementById("prev");
+        const nextEl = document.getElementById("next");
+
+        if (imageContainerEl && prevEl && nextEl) {
+            const spans = Array.from(imageContainerEl.querySelectorAll('span'));
+            const count = spans.length;
+            if (count === 0) return;
+
+            // Use actual rendered size so mobile matches desktop perfectly
+            const faceSize = imageContainerEl.offsetWidth || 300;
+            const angle = 360 / count;
+            const radius = Math.round((faceSize / 2) / Math.tan(Math.PI / count) * 1.5);
+
+            spans.forEach((span, i) => {
+                span.style.width = faceSize + 'px';
+                span.style.height = faceSize + 'px';
+                span.style.transform = `rotateY(${i * angle}deg) translateZ(${radius}px)`;
+            });
+
+            let currentIndex = 0;
+            function updateCube(index) {
+                currentIndex = ((index % count) + count) % count;
+                imageContainerEl.style.transform = `rotateY(${-currentIndex * angle}deg)`;
+                // Mobile: highlight active face, dim the rest
+                spans.forEach((s, i) => s.classList.toggle('face-active', i === currentIndex));
+            }
+            updateCube(0);
+
+            prevEl.addEventListener("click", () => updateCube(currentIndex - 1));
+            nextEl.addEventListener("click", () => updateCube(currentIndex + 1));
+
+            // Swipe support for mobile
+            let touchStartX = 0;
+            imageContainerEl.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+            }, { passive: true });
+            imageContainerEl.addEventListener('touchend', e => {
+                const diff = touchStartX - e.changedTouches[0].clientX;
+                if (Math.abs(diff) > 40) {
+                    diff > 0 ? updateCube(currentIndex + 1) : updateCube(currentIndex - 1);
+                }
+            }, { passive: true });
+        }
+
+        const instagramGallery = document.querySelector('.instagram-gallery');
+        if (instagramGallery) {
+            const imgCElements = instagramGallery.querySelectorAll('.instagram-img-c');
+
+            imgCElements.forEach((imgC) => {
+                imgC.addEventListener('click', function() {
+                    if (this.classList.contains('active')) return;
+
+                    const w = this.offsetWidth;
+                    const h = this.offsetHeight;
+                    const x = this.getBoundingClientRect().left + window.scrollX;
+                    const y = this.getBoundingClientRect().top + window.scrollY;
+
+                    document.querySelectorAll('.instagram-img-c.active').forEach(el => {
+                        el.classList.remove('active');
+                        el.classList.add('postactive');
+                        setTimeout(() => {
+                            if (el.classList.contains('postactive')) {
+                                el.classList.remove('postactive');
+                            }
+                        }, 500);
+                    });
+
+                    const copy = this.cloneNode(true);
+                    copy.style.width = w + 'px';
+                    copy.style.height = h + 'px';
+                    copy.style.position = 'fixed';
+                    copy.style.top = y + 'px';
+                    copy.style.left = x + 'px';
+                    copy.classList.add('active');
+
+                    document.body.appendChild(copy);
+
+                    setTimeout(() => {
+                        copy.classList.add('positioned');
+                        copy.style.width = '100%';
+                        copy.style.height = '100%';
+                        copy.style.top = '0';
+                        copy.style.left = '0';
+                        copy.style.transition = 'all ease 400ms';
+                    }, 0);
+
+                    copy.addEventListener('click', function(e) {
+                        if (e.target === this || e.target.closest('.instagram-img-w')) {
+                            this.classList.remove('positioned', 'active');
+                            this.classList.add('postactive');
+                            setTimeout(() => {
+                                this.remove();
+                            }, 500);
+                        }
+                    });
+                });
+            });
+        }
+
+        const videos = document.querySelectorAll('video');
+        videos.forEach(video => {
+            video.addEventListener('mouseenter', () => {
+                video.play();
+            });
+            video.addEventListener('mouseleave', () => {
+                video.pause();
+                video.currentTime = 0;
+            });
+            video.addEventListener('touchstart', () => {
+                video.play();
+            });
+            video.addEventListener('touchend', () => {
+                video.pause();
+                video.currentTime = 0;
+            });
+        });
+
+        const contactForm = document.getElementById('new-contact-form');
+        if (contactForm && !contactForm.dataset.listenerAttached) {
+            contactForm.dataset.listenerAttached = 'true';
+            contactForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const name = document.querySelector('input[name="name"]').value;
+                const email = document.querySelector('input[name="email"]').value;
+                const message = document.querySelector('textarea[name="message"]').value;
+
+                if (!name || !email || !message) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                const formData = new FormData(this);
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Thank you for your message! I will get back to you soon.');
+                        this.reset();
+                        document.querySelectorAll('.floating-label-group select').forEach(s => s.selectedIndex = 0);
+                    } else {
+                        alert('There was an error sending your message. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('There was an error sending your message. Please try again.');
+                });
+            });
+        }
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        window.addEventListener("scroll", () => {
+            let current = "";
+            const sections = document.querySelectorAll("section[id], div[id='home']");
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (window.scrollY >= (sectionTop - 150)) {
+                    current = section.getAttribute("id");
+                }
+            });
+            document.querySelectorAll(".nav a").forEach(link => {
+                const href = link.getAttribute("href");
+                if (href && href.startsWith("#")) {
+                    const sectionId = href.substring(1);
+                    link.classList.toggle("active", sectionId === current);
+                }
+            });
+        });
+
+        document.querySelectorAll('.nav a, .btn, .contact-btn, .instagram-img-c, .animation-card, .portfolio-card, .dev-item, .footer a').forEach(element => {
+            element.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+            });
+            element.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+            });
+        });
+
+        // Add style for Instagram zoom
+        const style = document.createElement('style');
+        style.textContent = `
             .instagram-img-c.active {
                 position: fixed !important;
                 z-index: 1000 !important;
@@ -251,10 +933,136 @@
                     backface-visibility: hidden;
                 }
             }
-        ",document.head.appendChild(o)}(),E("emailWrapper","elasticLineEmail"),E("btnWrapper","elasticLineBtn"),function(){const e=document.querySelector(".contact-section");e&&new IntersectionObserver(e=>{e.forEach(e=>{e.isIntersecting&&e.target.classList.add("visible")})},{threshold:.2}).observe(e)}(),h=function(){if(window.innerWidth>=768)return null;const e=document.querySelector(".nav ul"),t=document.querySelectorAll("
+        `;
+        document.head.appendChild(style);
+    }
+
+    function observeContact() {
+        const contactSection = document.querySelector('.contact-section');
+        if (contactSection) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.2 });
+            observer.observe(contactSection);
+        }
+    }
+
+    // ========== MOBILE-ONLY FEATURES ==========
+    let mobileCleanup = null;
+
+    function initMobileFeatures() {
+        if (window.innerWidth >= 768) return null;
+
+        const navUl = document.querySelector('.nav ul');
+        const closeMenu = () => navUl?.classList.remove('show');
+
+        // Scroll fade-in animations (no parallax)
+        const animatedElements = document.querySelectorAll(`
             .section-title, .bio-text p, .bio-image,
             .animation-card, .portfolio-card, .dev-item,
             .instagram-img-c, .contact-left h2, .contact-left p,
             .contact-email-wrapper, .contact-form-container,
             .main-name, .signature, .tagline
-        ");t.forEach(e=>e.classList.add("animate-mobile"));const n=new IntersectionObserver(e=>{e.forEach(e=>{e.isIntersecting&&(e.target.classList.add("visible"),n.unobserve(e.target))})},{threshold:.15,rootMargin:"0px 0px -30px 0px"});return t.forEach(e=>n.observe(e)),()=>{e&&e.classList.remove("show"),n.disconnect(),t.forEach(e=>{e.classList.remove("animate-mobile","visible")})}}(),function(){const e=(e,t)=>{e.addEventListener("click",n=>{n.preventDefault(),t.classList.toggle("open"),e.classList.toggle("open")})},t=document.getElementById("pricingToggle"),n=document.getElementById("pricingDrawer");if(t&&n)return void e(t,n);const r=new MutationObserver((t,n)=>{const r=document.getElementById("pricingToggle"),i=document.getElementById("pricingDrawer");r&&i&&(e(r,i),n.disconnect())});r.observe(document.body,{childList:!0,subtree:!0}),setTimeout(()=>r.disconnect(),5e3)}(),document.querySelectorAll(".yt-thumb").forEach(function(e){e.addEventListener("click",function(){var t=e.dataset.id,n=document.createElement("iframe");n.src="https://www.youtube-nocookie.com/embed/"+t+"?autoplay=1&rel=0&modestbranding=1&playsinline=1",n.allow="autoplay; fullscreen",n.allowFullscreen=!0,n.style.position="absolute",n.style.inset="0",n.style.width="100%",n.style.height="100%",n.style.border="none",e.innerHTML="",e.appendChild(n)})})},destroy:function(){console.log("Dark theme destroy"),d&&(cancelAnimationFrame(d),d=null),h&&h()}}}();
+        `);
+        animatedElements.forEach(el => el.classList.add('animate-mobile'));
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
+
+        animatedElements.forEach(el => observer.observe(el));
+
+        // Cleanup function
+        return () => {
+            if (navUl) navUl.classList.remove('show');
+            observer.disconnect();
+            animatedElements.forEach(el => {
+                el.classList.remove('animate-mobile', 'visible');
+            });
+        };
+    }
+
+    // ========== PRICING DRAWER ==========
+    function initPricingDrawer() {
+        const attachListener = (btn, drw) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                drw.classList.toggle('open');
+                btn.classList.toggle('open');
+            });
+        };
+
+        const btn = document.getElementById('pricingToggle');
+        const drw = document.getElementById('pricingDrawer');
+
+        if (btn && drw) {
+            attachListener(btn, drw);
+            return;
+        }
+
+        // If elements aren't found yet, observe DOM for their addition
+        const observer = new MutationObserver((mutations, obs) => {
+            const newBtn = document.getElementById('pricingToggle');
+            const newDrw = document.getElementById('pricingDrawer');
+            if (newBtn && newDrw) {
+                attachListener(newBtn, newDrw);
+                obs.disconnect();
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Fallback: stop observing after 5 seconds to avoid memory leaks
+        setTimeout(() => observer.disconnect(), 5000);
+    }
+
+    // ========== EXPORT ==========
+    // ========== YOUTUBE CLICK-TO-PLAY ==========
+    function initYouTube() {
+        document.querySelectorAll('.yt-thumb').forEach(function(thumb) {
+            thumb.addEventListener('click', function() {
+                var id = thumb.dataset.id;
+                var iframe = document.createElement('iframe');
+                iframe.src = 'https://www.youtube-nocookie.com/embed/' + id
+                           + '?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+                iframe.allow = 'autoplay; fullscreen';
+                iframe.allowFullscreen = true;
+                iframe.style.position = 'absolute';
+                iframe.style.inset = '0';
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                thumb.innerHTML = '';
+                thumb.appendChild(iframe);
+            });
+        });
+    }
+
+    window.__currentTheme = {
+        init: function() {
+            console.log('Dark theme init');
+            initFluid();
+            initPortfolio();
+            initElasticLine('emailWrapper', 'elasticLineEmail');
+            initElasticLine('btnWrapper', 'elasticLineBtn');
+            observeContact();
+            mobileCleanup = initMobileFeatures();
+            initPricingDrawer();
+            initYouTube();
+        },
+        destroy: function() {
+            console.log('Dark theme destroy');
+            stopFluid();
+            if (mobileCleanup) mobileCleanup();
+        }
+    };
+})();
