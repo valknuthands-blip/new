@@ -1,8 +1,5 @@
-// ============================================================
-//  WEB DEV VIDEOS — edit this file only
-//  To swap a video: replace the YouTube ID in the "id" field
-//  All dev videos use landscape (16:9) layout
-// ============================================================
+// (c) 2026 Vivash Singh - All Rights Reserved
+// To update: replace the YouTube ID in the "id" field only
 var WEBDEV_VIDEOS = [
     { id: "nqnIC97hcJg" },
     { id: "JyUP5vBN1hk" },
