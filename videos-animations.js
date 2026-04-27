@@ -1,4 +1,5 @@
 // (c) 2026 Vivash Singh - All Rights Reserved
+// (c) 2026 Vivash Singh - All Rights Reserved
 // To update: replace YouTube ID. type: "short" = portrait, "landscape" = widescreen
 var ANIMATION_VIDEOS = [
     { id: "wqCc4geO5DI", type: "short"     },
