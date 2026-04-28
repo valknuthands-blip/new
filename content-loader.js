@@ -12,7 +12,6 @@
         {id:'footer-section',file:'components/footer.html'}
     ];
     async function loadAll(){
-        // PARALLEL fetch — all 10 at once instead of one by one
         await Promise.all(sections.map(async s=>{
             try{
                 const r=await fetch(s.file);
@@ -27,7 +26,5 @@
     }
     if(document.readyState==='loading'){
         document.addEventListener('DOMContentLoaded',loadAll);
-    }else{
-        loadAll();
-    }
+    }else{loadAll();}
 })();
