@@ -1,4 +1,3 @@
-// (c) 2026 Vivash Singh - All Rights Reserved
 const fs   = require('fs');
 const path = require('path');
 
@@ -24,7 +23,7 @@ function getImages(prefix) {
             } else {
                 // photography: p1.png, p2.png ...
                 // instagram: ig1.png, ig2.png ...
-                const pattern = new RegExp('^' + prefix + '\d+$', 'i');
+                const pattern = new RegExp('^' + prefix + '\\d+$', 'i');
                 return pattern.test(name);
             }
         })
@@ -39,8 +38,7 @@ function getImages(prefix) {
 const marketingImages = getImages('');
 const marketingCards = marketingImages
     .map(f => `        <div class="portfolio-card"><img src="assets/images/${f}" alt="" loading="lazy"></div>`)
-    .join('
-');
+    .join('\n');
 
 const marketingHTML = `<section class="portfolio-section marketing-section" id="marketing">
     <h2 class="section-title">Marketing Collateral</h2>
@@ -58,8 +56,7 @@ console.log(`✅ marketing.html — ${marketingImages.length} image(s)`);
 const photoImages = getImages('p');
 const photoSpans = photoImages
     .map((f, i) => `        <span style="--i: ${i + 1}"><img src="assets/images/${f}" alt="" loading="lazy"></span>`)
-    .join('
-');
+    .join('\n');
 
 const photoHTML = `<section class="portfolio-section photography-section" id="photography">
     <h2 class="section-title">Photography</h2>
@@ -81,8 +78,7 @@ console.log(`✅ photography.html — ${photoImages.length} image(s)`);
 const igImages = getImages('ig');
 const igCards = igImages
     .map(f => `        <div class="instagram-img-c"><div class="instagram-img-w" style="background-image: url('assets/images/${f}')"></div></div>`)
-    .join('
-');
+    .join('\n');
 
 const igHTML = `<section class="portfolio-section instagram-section" id="instagram">
     <h2 class="section-title">Instagram</h2>
