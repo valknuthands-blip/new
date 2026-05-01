@@ -22,7 +22,7 @@ jobs:
           node-version: '20'
 
       - name: Generate section HTML files
-        run: node generate-marketing.js
+        run: node generate-marketing.js 
 
       - name: Commit generated files back to main
         run: |
