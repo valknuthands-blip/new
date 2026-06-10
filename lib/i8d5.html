@@ -1,0 +1,160 @@
+<section class="contact-section" id="contact">
+    <div class="contact-container">
+        <div class="contact-left">
+            <div class="glow-bg"></div>
+            <h2>
+                <span>LET'S BUILD</span>
+                <span>SOMETHING</span>
+                <span>POWERFUL.</span>
+            </h2>
+            <p>For brands that value precision, detail and impact.<br>Let's create something unforgettable.</p>
+            <div class="contact-email-wrapper" id="emailWrapper">
+                <a href="mailto:vivash.s@yahoo.com" class="contact-email">vivash.s@yahoo.com</a>
+                <div class="elastic-line-email" id="elasticLineEmail">
+                    <svg width="100%" height="12" viewBox="0 0 200 12" preserveAspectRatio="none">
+                        <path class="line line-shadow" d="M0,6 Q100,6 200,6" />
+                        <path class="line" d="M0,6 Q100,6 200,6" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="contact-right">
+            <div class="contact-form-container">
+                <form id="new-contact-form" action="https://formspree.io/f/xkovwnor" method="POST">
+                    <div class="floating-label-group">
+                        <input type="text" name="name" placeholder=" " required>
+                        <label>Name</label>
+                    </div>
+                    <div class="floating-label-group">
+                        <input type="email" name="email" placeholder=" " required>
+                        <label>Email</label>
+                    </div>
+
+                    <!-- Project Type Selection -->
+                    <div class="project-type-group">
+                        <label class="project-type-label">Project Type</label>
+                        <div class="project-type-options">
+                            <label class="project-type-chip">
+                                <input type="radio" name="project_type" value="Website / Design" checked>
+                                <span>Website / Design</span>
+                            </label>
+                            <label class="project-type-chip">
+                                <input type="radio" name="project_type" value="Brand / Campaign">
+                                <span>Brand / Campaign</span>
+                            </label>
+                            <label class="project-type-chip">
+                                <input type="radio" name="project_type" value="Animation">
+                                <span>Animation</span>
+                            </label>
+                            <label class="project-type-chip photography-chip">
+                                <input type="radio" name="project_type" value="Photography">
+                                <span>Photography</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Photography Request Fields (shown when Photography is selected) -->
+                    <div class="photography-fields" id="photographyFields" style="display:none;">
+                        <div class="photo-fields-note">
+                            <span class="photo-note-icon">📍</span>
+                            <p>Please include your <strong>event location</strong>, <strong>preferred date</strong>, and any other details below — this helps confirm booking availability.</p>
+                        </div>
+                        <div class="floating-label-group">
+                            <input type="text" name="event_location" placeholder=" ">
+                            <label>Event Location</label>
+                        </div>
+                        <div class="floating-label-group">
+                            <input type="text" name="preferred_date" placeholder=" ">
+                            <label>Preferred Date</label>
+                        </div>
+                    </div>
+
+                    <div class="floating-label-group">
+                        <textarea name="message" placeholder=" " required></textarea>
+                        <label id="visionLabel">Project Vision / Brief</label>
+                    </div>
+                    <div class="contact-btn-wrapper" id="btnWrapper">
+                        <button type="submit" class="contact-btn">START THE PROJECT</button>
+                        <div class="elastic-line-btn" id="elasticLineBtn">
+                            <svg width="100%" height="12" viewBox="0 0 200 12" preserveAspectRatio="none">
+                                <path class="line line-shadow" d="M0,6 Q100,6 200,6" />
+                                <path class="line" d="M0,6 Q100,6 200,6" />
+                            </svg>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Premium Pricing Drawer Toggle & Content -->
+                <div class="pricing-drawer-container">
+                    <button class="pricing-toggle" id="pricingToggle">
+                        START THE PROJECT <span class="arrow">⬇</span>
+                    </button>
+                    <div class="pricing-drawer" id="pricingDrawer">
+                        <h3 class="drawer-heading">Premium Services & Pricing</h3>
+                        <ul class="pricing-list">
+                            <li>
+                                <strong>Website Update</strong> – Starting at FJD 2,000<br>
+                                <span class="description">Content updates, visual refreshes, and interactive improvements to your existing site.</span>
+                            </li>
+                            <li>
+                                <strong>Full Website Design</strong> – Starting at FJD 6,000<br>
+                                <span class="description">Animated, high-performance websites with custom design and advanced interactivity.</span>
+                            </li>
+                            <li>
+                                <strong>Brand Identity</strong> – Starting at FJD 4,000<br>
+                                <span class="description">Logo design, visual identity, and brand assets for a cohesive brand presence.</span>
+                            </li>
+                            <li>
+                                <strong>Brand Campaign</strong> – Starting at FJD 1,500<br>
+                                <span class="description">Social media campaigns, motion graphics, and promotional visuals tailored for engagement.</span>
+                            </li>
+                            <li>
+                                <strong>Animation</strong> – Starting at FJD 1,000<br>
+                                <span class="description">High-quality video content, product animations, or social media motion pieces.</span>
+                            </li>
+                            <li>
+                                <strong>Custom Posters</strong> – Drop a custom brief via the contact form above<br>
+                                <span class="description">Custom poster design tailored to your vision. Every brief is unique — reach out and let's create something memorable.</span>
+                            </li>
+                            <li>
+                                <strong>Photography</strong> – Drop a brief via the contact form above<br>
+                                <span class="description">Event, portrait, product, and commercial photography. Select Photography in the form and include your event location, preferred date, and any relevant details so booking availability can be confirmed.</span>
+                            </li>
+                        </ul>
+                        <p class="drawer-footer">Contact me for custom quotes on larger projects or combined services.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+(function() {
+    function initPhotographyToggle() {
+        var chips = document.querySelectorAll('.project-type-chip input[type="radio"]');
+        var photoFields = document.getElementById('photographyFields');
+        var visionLabel = document.getElementById('visionLabel');
+        if (!chips.length || !photoFields) return;
+
+        chips.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                var isPhoto = this.value === 'Photography';
+                photoFields.style.display = isPhoto ? 'block' : 'none';
+                if (visionLabel) {
+                    visionLabel.textContent = isPhoto
+                        ? 'Additional Details / Custom Brief'
+                        : 'Project Vision / Brief';
+                }
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPhotographyToggle);
+    } else {
+        initPhotographyToggle();
+    }
+    document.addEventListener('content-loaded', initPhotographyToggle);
+})();
+</script>

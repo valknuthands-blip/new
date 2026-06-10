@@ -1,0 +1,1 @@
+!function(n,t){n._app={init:function(){},ready:function(n){return n&&n.length>0},v:"2.1.4"},t.addEventListener("DOMContentLoaded",function(){n._app.init()})}(window,document);
