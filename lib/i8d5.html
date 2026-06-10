@@ -150,11 +150,32 @@
         });
     }
 
+    function initDrawerScroll() {
+        var toggle = document.getElementById('pricingToggle');
+        var drawer = document.getElementById('pricingDrawer');
+        if (!toggle || !drawer) return;
+        toggle.addEventListener('click', function() {
+            // After the drawer opens, scroll it into view on mobile
+            setTimeout(function() {
+                if (toggle.classList.contains('open')) {
+                    toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 50);
+        });
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initPhotographyToggle);
+        document.addEventListener('DOMContentLoaded', function() {
+            initPhotographyToggle();
+            initDrawerScroll();
+        });
     } else {
         initPhotographyToggle();
+        initDrawerScroll();
     }
-    document.addEventListener('content-loaded', initPhotographyToggle);
+    document.addEventListener('content-loaded', function() {
+        initPhotographyToggle();
+        initDrawerScroll();
+    });
 })();
 </script>
