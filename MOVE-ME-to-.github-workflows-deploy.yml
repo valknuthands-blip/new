@@ -1,0 +1,62 @@
+name: Build & Deploy Portfolio
+
+# Every push to main:
+#   1. makes small .webp copies of any new images   (optimize-images.js)
+#   2. rebuilds the Marketing / Instagram / Photography galleries
+#      from whatever is in assets/images/            (generate-marketing.js)
+#   3. commits those changes back to main
+#   4. publishes the site to the gh-pages branch
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:   # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+# never run two deploys at once (a newer push cancels the older run)
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install image tools
+        run: npm install --no-save --no-package-lock sharp@0.33
+
+      - name: Optimize new images (.webp)
+        run: node optimize-images.js
+
+      - name: Generate gallery HTML from assets/images
+        run: node generate-marketing.js
+
+      - name: Commit generated files back to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib/g7e4.html lib/d3c6.html lib/e5a8.html assets/images/*.webp
+          git diff --cached --quiet || git commit -m "Auto-update galleries and images [skip ci]"
+          git push
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
+          enable_jekyll: false
+          cname: www.vivashsingh.com
+          exclude_assets: '.github,node_modules'

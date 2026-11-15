@@ -1,0 +1,269 @@
+/* =============================================================
+   FX.CSS — Editorial layout + reveal animations
+   Works with both dark and light theme (uses the theme's colours).
+   (c) 2026 Vivash Singh - All Rights Reserved
+   ============================================================= */
+
+/* ── Container: replace the old masonry columns ─────────────── */
+.fx-editorial {
+    column-count: initial !important;
+    display: block !important;
+    max-width: 1180px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
+}
+
+/* ── One row per piece, on a 12-column grid ─────────────────── */
+.fx-editorial > .fx-item {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    column-gap: 24px;
+    align-items: stretch;
+    margin: 0 0 clamp(70px, 9vw, 130px) 0;
+    padding: 0;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    break-inside: auto;
+}
+.fx-editorial > .fx-item:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+.fx-editorial > .fx-item.fx-hidden { display: none; }
+
+/* Media (image or video) */
+.fx-media {
+    position: relative;
+    overflow: visible;              /* the bent copy pokes out past the edges */
+    grid-row: 1;
+    transform-origin: 50% 50%;
+    will-change: transform;
+    border-radius: 2px;
+}
+.fx-editorial .fx-media img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transform: none !important;     /* old hover-zoom is replaced by the ripple */
+}
+.fx-editorial .dev-video-wrapper,
+.fx-editorial .yt-wrap {
+    width: 100%;
+    overflow: hidden;
+    transform-origin: 50% 50%;
+    will-change: transform, border-radius;
+}
+
+/* Images: never taller than ~78% of the screen (keeps their shape) */
+.fx-editorial .fx-media:has(img) {
+    width: 100%;
+    max-width: calc(78vh * var(--ar, 1));
+}
+.fx-pos-0 .fx-media:has(img) { justify-self: end; }
+.fx-pos-1 .fx-media:has(img) { justify-self: start; }
+.fx-pos-2 .fx-media:has(img) { justify-self: center; }
+.fx-pos-3 .fx-media:has(img) { justify-self: start; }
+
+/* WebGL overlay that shows the distorted image while scrolling */
+.fx-canvas {
+    position: absolute;             /* size & position are set by fx.js */
+    left: 0;
+    top: 0;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Text beside the media */
+.fx-meta {
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding-top: 2px;
+}
+.fx-label {
+    font-family: var(--secondary-font, monospace);
+    font-size: 0.66rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--secondary-text);
+}
+.fx-title {
+    font-family: var(--primary-font, sans-serif);
+    font-size: clamp(1.1rem, 1.6vw, 1.45rem);
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--primary-text);
+    letter-spacing: -0.01em;
+}
+.fx-caption {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--secondary-text);
+    max-width: 26ch;
+}
+.fx-count {
+    margin-top: auto;               /* pushes the counter to the bottom */
+    font-family: var(--secondary-font, monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--secondary-text);
+    opacity: 0.7;
+}
+
+/* ── The four repeating positions (like the reference video) ── */
+/* 0: media centre-left, text on the right */
+.fx-pos-0 .fx-media { grid-column: 3 / 8; }
+.fx-pos-0 .fx-meta  { grid-column: 8 / 11; }
+
+/* 1: media on the right, text on the left (right-aligned) */
+.fx-pos-1 .fx-media { grid-column: 6 / 12; }
+.fx-pos-1 .fx-meta  { grid-column: 2 / 6; text-align: right; align-items: flex-end; }
+
+/* 2: wide media, text underneath */
+.fx-pos-2 .fx-media { grid-column: 2 / 12; }
+.fx-pos-2 .fx-meta  {
+    grid-column: 2 / 12;
+    grid-row: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 18px;
+    padding-top: 14px;
+}
+.fx-pos-2 .fx-count { margin: 0 0 0 auto; }
+
+/* 3: media centre-right, text on the left */
+.fx-pos-3 .fx-media { grid-column: 5 / 10; }
+.fx-pos-3 .fx-meta  { grid-column: 2 / 5; text-align: right; align-items: flex-end; }
+
+/* Portrait videos (YouTube Shorts) are narrower */
+.fx-portrait.fx-pos-0 .fx-media { grid-column: 4 / 7; }
+.fx-portrait.fx-pos-0 .fx-meta  { grid-column: 7 / 10; }
+.fx-portrait.fx-pos-1 .fx-media { grid-column: 7 / 10; }
+.fx-portrait.fx-pos-1 .fx-meta  { grid-column: 3 / 7; }
+.fx-portrait.fx-pos-2 .fx-media { grid-column: 5 / 9; }
+.fx-portrait.fx-pos-2 .fx-meta  { grid-column: 5 / 9; }
+.fx-portrait.fx-pos-3 .fx-media { grid-column: 6 / 9; }
+.fx-portrait.fx-pos-3 .fx-meta  { grid-column: 3 / 6; }
+
+/* ── Reveal on enter ────────────────────────────────────────── */
+/* (uses `translate`, so the scroll-stretch `transform` never fights it) */
+.fx-ready .fx-item .fx-media {
+    opacity: 0;
+    translate: 0 50px;
+    clip-path: inset(10% 0 10% 0);
+    transition: opacity 0.9s ease, translate 1.1s cubic-bezier(0.2, 0.7, 0.2, 1),
+                clip-path 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.fx-ready .fx-item.fx-in .fx-media {
+    opacity: 1;
+    translate: 0 0;
+    clip-path: inset(-40% -20% -40% -20%);   /* open wide so the bend is never cut off */
+}
+.fx-ready .fx-item .fx-label,
+.fx-ready .fx-item .fx-caption,
+.fx-ready .fx-item .fx-count {
+    opacity: 0;
+    transition: opacity 0.8s ease 0.35s;
+}
+.fx-ready .fx-item.fx-in .fx-label,
+.fx-ready .fx-item.fx-in .fx-caption,
+.fx-ready .fx-item.fx-in .fx-count { opacity: 1; }
+
+/* Title lights up letter by letter */
+.fx-ch {
+    display: inline-block;
+    opacity: 0.12;
+    transition: opacity 0.5s ease;
+    transition-delay: calc(var(--d) + 250ms);
+}
+.fx-in .fx-ch { opacity: 1; }
+
+/* ── "Show all" button ──────────────────────────────────────── */
+.fx-more {
+    display: block;
+    margin: 10px auto 0;
+    padding: 14px 34px;
+    background: transparent;
+    color: var(--primary-text);
+    border: 1px solid var(--border-light);
+    border-radius: 40px;
+    font-family: var(--secondary-font, monospace);
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.3s, background 0.3s;
+    position: relative;
+    z-index: 20;
+}
+.fx-more:hover { border-color: var(--accent-primary); background: rgba(127, 127, 127, 0.08); }
+.fx-more span { display: inline-block; margin-left: 6px; }
+
+/* ── Phones / small tablets ─────────────────────────────────── */
+@media (max-width: 767px) {
+    .fx-editorial { padding: 0 18px !important; }
+    .fx-editorial > .fx-item {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 64px;
+    }
+    .fx-editorial > .fx-item .fx-media {
+        width: 88%;
+        grid-column: auto;
+    }
+    .fx-editorial > .fx-item .fx-media:has(img) {
+        max-width: min(88%, calc(70vh * var(--ar, 1)));
+    }
+    .fx-editorial > .fx-item .fx-meta {
+        width: 88%;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        padding-top: 12px;
+    }
+    /* alternate left / right */
+    .fx-editorial > .fx-item:nth-child(even) .fx-media,
+    .fx-editorial > .fx-item:nth-child(even) .fx-meta {
+        margin-left: auto;
+    }
+    .fx-editorial > .fx-item:nth-child(even) .fx-meta {
+        align-items: flex-end;
+        text-align: right;
+    }
+    .fx-editorial > .fx-item.fx-portrait .fx-media,
+    .fx-editorial > .fx-item.fx-portrait .fx-meta { width: 66%; }
+    .fx-count { margin-top: 4px; }
+    .fx-pos-2 .fx-count { margin: 4px 0 0; }
+}
+
+/* Respect "reduce motion" accessibility setting */
+@media (prefers-reduced-motion: reduce) {
+    .fx-ready .fx-item .fx-media,
+    .fx-ready .fx-item .fx-label,
+    .fx-ready .fx-item .fx-caption,
+    .fx-ready .fx-item .fx-count,
+    .fx-ch { opacity: 1 !important; translate: none !important; clip-path: none !important; transition: none !important; }
+}
+
+/* ── Logo strip: swipe / hold-to-pause (logos.js) ─────────────── */
+.logo-section .marquee.logo-js {
+    touch-action: pan-y;            /* up/down still scrolls the page */
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.logo-section .marquee.logo-js.logo-dragging { cursor: grabbing; }
+.logo-section .marquee.logo-js .marquee__group {
+    animation: none !important;     /* movement now comes from logos.js */
+    will-change: transform;
+}
+.logo-section .marquee.logo-js svg { pointer-events: none; }

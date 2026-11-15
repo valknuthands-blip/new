@@ -1,1 +1,82 @@
-!function(){"use strict";function n(){document.querySelectorAll("img").forEach(function(n){n.setAttribute("draggable","false"),n.style.userSelect="none",n.style.webkitUserDrag="none",n.style.pointerEvents="none";var t=n.parentElement;if(t&&!t.getAttribute("data-protected")){if("SPAN"!==t.tagName||!t.closest||!t.closest(".image-container")){t.style.position=t.style.position||"relative";var e=document.createElement("div");e.style.cssText="position:absolute;inset:0;z-index:10;pointer-events:all;user-select:none;-webkit-user-select:none;",e.addEventListener("contextmenu",function(n){return n.preventDefault(),!1}),e.addEventListener("dragstart",function(n){return n.preventDefault(),!1})}t.setAttribute("data-protected","1")}})}!function(){if(!document.querySelector('meta[name="copyright"]')){var n=document.createElement("meta");n.name="copyright",n.content="© 2026 Vivash Singh. All Rights Reserved.",document.head.appendChild(n)}}(),document.addEventListener("copy",function(n){return n.preventDefault(),!1}),document.addEventListener("cut",function(n){return n.preventDefault(),!1}),document.addEventListener("selectstart",function(n){return n.preventDefault(),!1}),document.addEventListener("keydown",function(n){"PrintScreen"!==n.key&&44!==n.keyCode||(n.preventDefault(),setTimeout(function(){navigator.clipboard&&navigator.clipboard.writeText&&navigator.clipboard.writeText("").catch(function(){})},300))}),"loading"===document.readyState?document.addEventListener("DOMContentLoaded",n):n(),new MutationObserver(function(t){t.forEach(function(t){t.addedNodes.length&&n()})}).observe(document.body||document.documentElement,{childList:!0,subtree:!0})}();!function(){"use strict";document.addEventListener("click",function(e){var t=e.target;if(t.tagName==="IMG"){e.preventDefault();e.stopPropagation();return false;}var a=t.closest("a");if(a&&a.querySelector("img")){e.preventDefault();e.stopPropagation();return false;}},{capture:true});document.addEventListener("contextmenu",function(e){if(e.target.tagName==="IMG"){e.preventDefault();return false;}},{capture:true});}();
+// px.js — Image & Content Protection
+// Locks all images against drag, right-click, and direct navigation.
+(function () {
+    'use strict';
+
+    // Stamp copyright meta in DOM
+    function stampCopyright() {
+        if (!document.querySelector('meta[name="copyright"]')) {
+            const m = document.createElement('meta');
+            m.name    = 'copyright';
+            m.content = '© 2026 Vivash Singh. All Rights Reserved.';
+            document.head.appendChild(m);
+        }
+    }
+    stampCopyright();
+
+    // Lock all images
+    function lockImages() {
+        document.querySelectorAll('img').forEach(function (img) {
+            img.setAttribute('draggable', 'false');
+            img.style.userSelect      = 'none';
+            img.style.webkitUserDrag  = 'none';
+            img.style.pointerEvents   = 'none';
+
+            const wrap = img.parentElement;
+            if (wrap && !wrap.getAttribute('data-protected')) {
+                // Skip .image-container spans (3D cube faces) — adding overlay breaks the transform
+                const isCubeFace = wrap.tagName === 'SPAN' && wrap.closest && wrap.closest('.image-container');
+                if (!isCubeFace) {
+                    wrap.style.position = wrap.style.position || 'relative';
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:absolute;inset:0;z-index:10;pointer-events:all;user-select:none;-webkit-user-select:none;';
+                    overlay.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
+                    overlay.addEventListener('dragstart',   (e) => { e.preventDefault(); return false; });
+                }
+                wrap.setAttribute('data-protected', '1');
+            }
+        });
+    }
+
+    // Block copy / cut / selectstart
+    document.addEventListener('copy',        (e) => { e.preventDefault(); return false; });
+    document.addEventListener('cut',         (e) => { e.preventDefault(); return false; });
+    document.addEventListener('selectstart', (e) => { e.preventDefault(); return false; });
+
+    // Intercept PrintScreen
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'PrintScreen' || e.keyCode === 44) {
+            e.preventDefault();
+            setTimeout(() => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText('').catch(() => {});
+                }
+            }, 300);
+        }
+    });
+
+    // Block image clicks from navigating to full-screen
+    document.addEventListener('click', function (e) {
+        if (e.target.tagName === 'IMG') { e.preventDefault(); e.stopPropagation(); return false; }
+        const a = e.target.closest('a');
+        if (a && a.querySelector('img')) { e.preventDefault(); e.stopPropagation(); return false; }
+    }, { capture: true });
+
+    document.addEventListener('contextmenu', function (e) {
+        if (e.target.tagName === 'IMG') { e.preventDefault(); return false; }
+    }, { capture: true });
+
+    // Run on load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', lockImages);
+    } else {
+        lockImages();
+    }
+
+    // Re-run on dynamic content
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((m) => { if (m.addedNodes.length) lockImages(); });
+    });
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+}());
