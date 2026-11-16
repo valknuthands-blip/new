@@ -79,8 +79,9 @@
         /* Safety net: if a script ever fails, the page still appears (never a blank screen) */
         @keyframes vs-failsafe { to { opacity: 1; visibility: visible; } }
         @keyframes vs-hide { to { opacity: 0; visibility: hidden; pointer-events: none; } }
-        body, body > :not(#loading-screen):not(script):not(style) { animation: vs-failsafe 0s 9s forwards; }
-        #loading-screen { animation: vs-hide 0.6s 9s forwards; }
+        /* only while the page has NOT finished loading — once it has, nothing here applies */
+        body:not(.loaded), body:not(.loaded) > :not(#loading-screen):not(script):not(style) { animation: vs-failsafe 0s 9s forwards; }
+        body:not(.loaded) #loading-screen { animation: vs-hide 0.6s 9s forwards; }
         
         #loading-screen { visibility: visible !important; background: #000000 !important; }
     </style>
