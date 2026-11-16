@@ -106,6 +106,7 @@
         function checkInteractiveZones(x, y) {
             const zones = [zoneCenter, zoneNav, zoneContent];
             return zones.some(zone => {
+                if (!zone) return false;
                 const rect = zone.getBoundingClientRect();
                 return x >= rect.left && x <= rect.right && 
                        y >= rect.top && y <= rect.bottom;
@@ -1188,12 +1189,13 @@
             else deactivateTextureAnimation();
         }
 
-        addListenerWithCleanup(canvas, 'mouseenter', onMouseEnter);
-        addListenerWithCleanup(canvas, 'mouseleave', onMouseLeave);
-        addListenerWithCleanup(canvas, 'mousemove', onMouseMove);
+        // The canvas lets clicks pass through to the site, so follow the mouse on the whole page.
+        addListenerWithCleanup(document, 'mouseover', onMouseEnter);
+        addListenerWithCleanup(document.documentElement, 'mouseleave', onMouseLeave);
+        addListenerWithCleanup(window, 'mousemove', onMouseMove, { passive: true });
 
         function onTouchStart(e) {
-            const touches = e.targetTouches;
+            const touches = e.touches;
             while (touches.length >= pointers.length) pointers.push(new pointerPrototype());
             for (let i = 0; i < touches.length; i++) {
                 let touch = touches[i];
@@ -1206,10 +1208,10 @@
                 if (checkInteractiveZones(touch.clientX, touch.clientY)) activateTextureAnimation();
             }
         }
-        addListenerWithCleanup(canvas, 'touchstart', onTouchStart, { passive: true });
+        addListenerWithCleanup(window, 'touchstart', onTouchStart, { passive: true });
 
         function onTouchMove(e) {
-            const touches = e.targetTouches;
+            const touches = e.touches;
             for (let i = 0; i < touches.length; i++) {
                 let touch = touches[i];
                 let pointer = pointers[i + 1];
@@ -1222,7 +1224,7 @@
                 if (checkInteractiveZones(touch.clientX, touch.clientY)) activateTextureAnimation();
             }
         }
-        addListenerWithCleanup(canvas, 'touchmove', onTouchMove, { passive: true });
+        addListenerWithCleanup(window, 'touchmove', onTouchMove, { passive: true });
 
         function onTouchEnd(e) {
             const touches = e.changedTouches;
@@ -1233,9 +1235,8 @@
             }
             deactivateTextureAnimation();
         }
-        addListenerWithCleanup(canvas, 'touchend', onTouchEnd);
+        addListenerWithCleanup(window, 'touchend', onTouchEnd, { passive: true });
 
-        window.addEventListener('touchend', onTouchEnd); // global, but we'll keep simple
 
         function onKeyDown(e) {
             if (e.code === 'KeyP') config.PAUSED = !config.PAUSED;

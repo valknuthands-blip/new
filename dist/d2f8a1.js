@@ -577,24 +577,27 @@
             }
         }
 
-        canvas.addEventListener('mouseenter', (e) => {
+        // The canvas lets clicks pass through to the site, so follow the mouse on the whole page.
+        document.addEventListener('mouseover', (e) => {
+            if (pointers[0].down) return;
             pointers[0].down = true;
             pointers[0].moved = false;
-            pointers[0].x = e.offsetX;
-            pointers[0].y = e.offsetY;
+            pointers[0].x = e.clientX;
+            pointers[0].y = e.clientY;
             pointers[0].dx = 0;
             pointers[0].dy = 0;
         });
 
-        canvas.addEventListener('mousemove', (e) => {
+        window.addEventListener('mousemove', (e) => {
+            if (!pointers[0].down) { pointers[0].down = true; pointers[0].x = e.clientX; pointers[0].y = e.clientY; }
             pointers[0].moved = pointers[0].down;
-            pointers[0].dx = (e.offsetX - pointers[0].x) * 2.0;
-            pointers[0].dy = (e.offsetY - pointers[0].y) * 2.0;
-            pointers[0].x = e.offsetX;
-            pointers[0].y = e.offsetY;
+            pointers[0].dx = (e.clientX - pointers[0].x) * 2.0;
+            pointers[0].dy = (e.clientY - pointers[0].y) * 2.0;
+            pointers[0].x = e.clientX;
+            pointers[0].y = e.clientY;
         });
 
-        canvas.addEventListener('mouseleave', () => {
+        document.documentElement.addEventListener('mouseleave', () => {
             pointers[0].down = false;
             pointers[0].moved = false;
         });

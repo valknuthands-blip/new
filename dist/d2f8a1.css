@@ -79,7 +79,7 @@ html, body {
     height: 100lvh;          /* stable height on phones: doesn't jump when the address bar hides */
     touch-action: pan-y;     /* vertical swipes scroll the page on phones */
     z-index: 1;
-    pointer-events: auto;
+    pointer-events: none;   /* clicks go through to the site */
     opacity: 0.9;
     mix-blend-mode: normal;
 }

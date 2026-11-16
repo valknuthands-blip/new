@@ -86,7 +86,7 @@ writeGallery('g7e4.html',
 
 // Instagram (lib/d3c6.html)
 writeGallery('d3c6.html',
-    instagram.map(f => `<div class="instagram-img-c"><div class="instagram-img-w" style="background-image: url('${src(f)}')"></div></div>`),
+    instagram.map(f => `<div class="instagram-img-c"><div class="instagram-img-w" data-bg="${src(f)}"></div></div>`),   // perf.js loads it when near
     '        ');
 
 // Photography 3D cube (lib/e5a8.html)

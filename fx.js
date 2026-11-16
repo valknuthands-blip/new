@@ -28,8 +28,8 @@
     var CONFIG = {
         sections: {
             marketing: { grid: '.portfolio-grid', label: 'Marketing Collateral', showFirst: 12 },
-            animation: { grid: '.animation-grid', label: 'Animation',            showFirst: 0 },
-            dev:       { grid: '.dev-stack',      label: 'Website Development',  showFirst: 0 }
+            animation: { grid: '.animation-grid', label: 'Animation',            showFirst: 0, flow: true },
+            dev:       { grid: '.dev-stack',      label: 'Website Development',  showFirst: 0, flow: true }
         },
 
         captions: {
@@ -109,6 +109,7 @@
             if (!grid || grid.classList.contains('fx-editorial')) return;
 
             grid.classList.add('fx-editorial');
+            if (cfg.flow) grid.classList.add('fx-flow');   // videos: sized by their shape, side by side when there's room
             var items = Array.prototype.slice.call(grid.children).filter(function (el) {
                 return el.nodeType === 1;
             });
@@ -142,6 +143,7 @@
                 card.classList.add('fx-item', 'fx-pos-' + (i % 4));
                 if (media.querySelector('.yt-short')) card.classList.add('fx-portrait');
                 if (media.querySelector('iframe'))   card.classList.add('fx-video');
+                if (cfg.flow) card.style.setProperty('--ar', media.querySelector('.yt-short') ? '0.5625' : '1.7778');
 
                 if (cfg.showFirst && i >= cfg.showFirst) card.classList.add('fx-hidden');
             });
@@ -174,7 +176,7 @@
             var file = decodeURIComponent((img.getAttribute('src') || '').split('/').pop());
             key = file.replace(/\.[a-z0-9]+$/i, '');
         } else if (frame) {
-            var m = (frame.getAttribute('src') || '').match(/embed\/([A-Za-z0-9_-]+)/);
+            var m = (frame.getAttribute('src') || frame.getAttribute('data-src') || '').match(/embed\/([A-Za-z0-9_-]+)/);
             key = m && m[1];
         }
         var c = key && CONFIG.captions[key];

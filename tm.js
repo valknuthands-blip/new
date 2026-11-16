@@ -12,7 +12,7 @@
         light: { css: 'dist/f4c9b3.css', js: 'dist/f4c9b3.js' }
     };
 
-    const saved        = localStorage.getItem(STORAGE_KEY);
+    let saved = null; try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}   // private browsing can block storage
     const prefersDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
     let   currentTheme = saved || (prefersDark ? 'dark' : 'light');
 
@@ -122,7 +122,7 @@
             }
         }
 
-        localStorage.setItem(STORAGE_KEY, name);
+        try { localStorage.setItem(STORAGE_KEY, name); } catch (e) {}
         currentTheme = name;
     }
 

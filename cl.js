@@ -1,5 +1,6 @@
 // cl.js — Content Loader
-// Fetches each section HTML from lib/ and injects into the page.
+// Fetches every section HTML from lib/ AT THE SAME TIME (they used to
+// load one after another), then puts them on the page in order.
 (function () {
 
     const sections = [
@@ -15,25 +16,28 @@
         { id: 'footer-section',      file: 'lib/j1a9.html' }
     ];
 
-    async function loadAll() {
-        for (const section of sections) {
-            try {
-                const response = await fetch(section.file);
-                if (!response.ok) throw new Error('Failed to load ' + section.file);
-                const html = await response.text();
-                document.getElementById(section.id).innerHTML = html;
-            } catch (e) {
-                console.error(e);
-            }
-        }
+    // start every download right now, in parallel
+    const downloads = sections.map(s =>
+        fetch(s.file)
+            .then(r => { if (!r.ok) throw new Error('Failed to load ' + s.file); return r.text(); })
+            .catch(e => { console.error(e); return ''; })
+    );
+
+    function insertAll(htmls) {
+        sections.forEach((s, i) => {
+            const el = document.getElementById(s.id);
+            if (el && htmls[i]) el.innerHTML = htmls[i];
+        });
         window.contentLoaded = true;
         document.dispatchEvent(new Event('content-loaded'));
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadAll);
-    } else {
-        loadAll();
-    }
+    Promise.all(downloads).then(htmls => {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => insertAll(htmls));
+        } else {
+            insertAll(htmls);
+        }
+    });
 
 })();

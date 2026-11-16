@@ -1,18 +1,7 @@
 // rt.js — Site Shield
-// Blocks right-click, keyboard shortcuts, and detects DevTools.
+// Blocks right-click and common copy/save keyboard shortcuts.
 (function () {
     'use strict';
-
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    // Wipe the page (DevTools detected)
-    function wipe() {
-        try {
-            document.documentElement.style.opacity = '0';
-            document.body.innerHTML = '';
-            window.location.replace('about:blank');
-        } catch (e) {}
-    }
 
     // Block right-click
     document.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
@@ -43,28 +32,8 @@
         }
     });
 
-    if (!isMobile) {
-        // DevTools detection via window size ratio
-        // When DevTools docked: outer stays large, inner shrinks significantly.
-        // Small window: both outer and inner shrink together.
-        // Only wipe when outer >= 800px but inner drops below 65% — DevTools signature.
-        setInterval(function () {
-            const ow = window.outerWidth;
-            const oh = window.outerHeight;
-            const iw = window.innerWidth;
-            const ih = window.innerHeight;
-            if (ow >= 800 && (iw / ow) < 0.65) { wipe(); return; }
-            if (oh >= 600 && (ih / oh) < 0.65) { wipe(); }
-        }, 500);
-
-        // Re-check on theme-ready
-        document.addEventListener('theme-ready', () => {
-            setTimeout(() => {
-                const ow = window.outerWidth;
-                const iw = window.innerWidth;
-                if (ow >= 800 && (iw / ow) < 0.65) wipe();
-            }, 3000);
-        });
-    }
+    // (The old "DevTools detection" was removed: it judged by window size,
+    //  so anyone with a narrow or split-screen browser window got a blank
+    //  page. It also couldn't stop anyone — the site's files are public.)
 
 }());

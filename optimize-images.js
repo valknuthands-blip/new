@@ -4,7 +4,7 @@
 //
 //  Runs automatically on GitHub when you push. For every image in
 //  assets/images/ that doesn't have a .webp copy yet, it creates
-//  one (max 1600px wide, high quality). Your original PNG/JPG files
+//  one (max 1200px wide, high quality). Your original PNG/JPG files
 //  are never changed or deleted. The site then loads the .webp,
 //  which is usually 5–10× smaller, so pages load much faster.
 //
@@ -16,7 +16,7 @@ const path = require('path');
 const sharp = require('sharp');
 
 const IMG_DIR = path.join(__dirname, 'assets', 'images');
-const MAX_WIDTH = 1600;
+const MAX_WIDTH = 1200;   // big enough for sharp display at the sizes the site shows
 const SKIP = /^(favicon)\./i;   // keep the favicon as PNG
 
 (async () => {
@@ -33,7 +33,7 @@ const SKIP = /^(favicon)\./i;   // keep the favicon as PNG
         await sharp(srcPath)
             .rotate()
             .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-            .webp({ quality: 82, effort: 5 })
+            .webp({ quality: 78, effort: 6 })
             .toFile(out);
         const before = fs.statSync(srcPath).size, after = fs.statSync(out).size;
         console.log(`✓ ${f} → ${base}.webp  (${(before / 1024).toFixed(0)} KB → ${(after / 1024).toFixed(0)} KB)`);
