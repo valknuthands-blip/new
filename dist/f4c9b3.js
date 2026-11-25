@@ -1766,7 +1766,6 @@
         // Scroll fade-in animations (no parallax)
         const animatedElements = document.querySelectorAll(`
             .section-title, .bio-text p, .bio-image,
-            .animation-card, .portfolio-card, .dev-item,
             .instagram-img-c, .contact-left h2, .contact-left p,
             .contact-email-wrapper, .contact-form-container,
             .main-name, .signature, .tagline

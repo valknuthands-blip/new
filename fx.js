@@ -389,7 +389,7 @@
         media.appendChild(cv);
         var p = {
             img: img, media: media, canvas: cv, ctx: cv.getContext('2d'),
-            tex: null, visible: false, shown: false, w: 0, h: 0,
+            tex: null, near: false, shown: false, w: 0, h: 0,
             mouse: [0.5, 0.5], hover: 0, hoverTarget: 0
         };
         if (finePointer && CONFIG.ripple) {
@@ -415,10 +415,10 @@
             entries.forEach(function (e) {
                 var p = planes.find(function (q) { return q.media === e.target; });
                 if (!p) return;
-                p.visible = e.isIntersecting;
-                if (!p.visible) freeTexture(p);
+                p.near = e.isIntersecting;
+                if (!p.near) freeTexture(p);
             });
-        }, { rootMargin: '25% 0px' });
+        }, { rootMargin: '150% 0px' });
         planes.forEach(function (p) { planeObserver.observe(p.media); });
     }
 
@@ -470,7 +470,12 @@
             if (Math.abs(p.hover - p.hoverTarget) > 0.01 || p.hoverTarget) busy = true;
 
             var active = !settle && (Math.abs(vel) > 0.004 || p.hover > 0.01);
-            if (!p.visible || !active) { hidePlane(p); continue; }
+            var onScreen = false;
+            if (p.near && active) {
+                var r = p.media.getBoundingClientRect();
+                onScreen = r.bottom > -80 && r.top < window.innerHeight + 80;
+            }
+            if (!onScreen) { hidePlane(p); continue; }
             if (!ensureTexture(p)) continue;
 
             var iw = p.img.clientWidth, ih = p.img.clientHeight;
@@ -488,7 +493,10 @@
                 p.canvas.height = Math.round(ch * dpr);
             }
             var W = p.canvas.width, H = p.canvas.height;
-            if (glCanvas.width !== W || glCanvas.height !== H) { glCanvas.width = W; glCanvas.height = H; }
+            if (glCanvas.width < W || glCanvas.height < H) {
+                glCanvas.width = Math.max(glCanvas.width, W);
+                glCanvas.height = Math.max(glCanvas.height, H);
+            }
 
             gl.viewport(0, 0, W, H);
             gl.clear(gl.COLOR_BUFFER_BIT);
@@ -503,7 +511,8 @@
             gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
 
             p.ctx.clearRect(0, 0, W, H);
-            p.ctx.drawImage(glCanvas, 0, 0);
+            // the drawing sits in the bottom-left corner of the shared surface
+            p.ctx.drawImage(glCanvas, 0, glCanvas.height - H, W, H, 0, 0, W, H);
             if (!p.shown) {
                 p.canvas.style.opacity = '1';
                 p.img.style.visibility = 'hidden';   // the bent copy replaces it

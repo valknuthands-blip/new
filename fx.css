@@ -1,3 +1,8 @@
+/* Page content always sits above the moving background (#fluidCanvas, z-index 1),
+   even while sections animate. */
+body > .container,
+body > div[id$="-section"] { position: relative; z-index: 2; }
+
 /* =============================================================
    FX.CSS — Editorial layout + reveal animations
    Works with both dark and light theme (uses the theme's colours).
