@@ -12,8 +12,9 @@
 //    • Photography → p + number, e.g. p5.png
 //  Files named dp.*, favicon.* or starting with _ are ignored.
 //  Images are sorted by number (1, 2, 10 — not 1, 10, 2).
-//  If a .webp version exists (made by optimize-images.js) the
-//  site uses it automatically because it's much smaller.
+//  If .webp copies exist (made by optimize-images.js) the site
+//  uses them: phones get the small copy, big screens the full one,
+//  and a tiny blurred preview shows instantly while they load.
 // =============================================================
 
 const fs = require('fs');
@@ -33,6 +34,7 @@ for (const f of files) {
     const ext = path.extname(f).toLowerCase();
     if (!SOURCE_EXT.includes(ext)) continue;
     const base = f.slice(0, -ext.length);
+    if (/-(800|480)$/.test(base)) continue;          // size copies, not separate images
     (byBase[base] = byBase[base] || []).push(f);
 }
 
@@ -79,17 +81,47 @@ function writeGallery(file, items, indent) {
 
 const src = f => 'assets/images/' + encodeURI(f);
 
+// size copies + blurred previews made by optimize-images.js
+let previews = {};
+try { previews = JSON.parse(fs.readFileSync(path.join(IMG_DIR, '_previews.json'), 'utf8')); } catch (e) {}
+const baseOf = f => f.slice(0, -path.extname(f).length);
+const has = name => fs.existsSync(path.join(IMG_DIR, name));
+
+// <img> with small/medium/full copies, real size (no jumping) and an instant blurred preview
+function img(f, sizes) {
+    const b = baseOf(f);
+    let a = `src="${src(f)}"`;
+    if (f.endsWith('.webp') && has(b + '-480.webp') && has(b + '-800.webp')) {
+        a += ` srcset="${src(b + '-480.webp')} 480w, ${src(b + '-800.webp')} 800w, ${src(f)} 1200w" sizes="${sizes}"`;
+    }
+    const wh = previews[b + ':size'];
+    if (wh) a += ` width="${wh[0]}" height="${wh[1]}"`;
+    if (previews[b]) a += ` style="background:url(${previews[b]}) center/cover no-repeat"`;
+    return `<img ${a} alt="" loading="lazy" decoding="async">`;
+}
+
+// Instagram tiles are backgrounds: perf.js picks the right copy for the tile's size
+function bgTile(f) {
+    const b = baseOf(f);
+    let a = `data-bg="${src(f)}"`;
+    if (f.endsWith('.webp') && has(b + '-480.webp') && has(b + '-800.webp')) {
+        a += ` data-bg-480="${src(b + '-480.webp')}" data-bg-800="${src(b + '-800.webp')}"`;
+    }
+    if (previews[b]) a += ` style="background-image:url(${previews[b]})"`;
+    return `<div class="instagram-img-w" ${a}></div>`;
+}
+
 // Marketing (lib/g7e4.html)
 writeGallery('g7e4.html',
-    marketing.map(f => `<div class="portfolio-card"><img src="${src(f)}" alt="" loading="lazy" decoding="async"></div>`),
+    marketing.map(f => `<div class="portfolio-card">${img(f, '(max-width: 767px) 55vw, (max-width: 1200px) 45vw, 560px')}</div>`),
     '        ');
 
 // Instagram (lib/d3c6.html)
 writeGallery('d3c6.html',
-    instagram.map(f => `<div class="instagram-img-c"><div class="instagram-img-w" data-bg="${src(f)}"></div></div>`),   // perf.js loads it when near
+    instagram.map(f => `<div class="instagram-img-c">${bgTile(f)}</div>`),   // perf.js loads it when near
     '        ');
 
 // Photography 3D cube (lib/e5a8.html)
 writeGallery('e5a8.html',
-    photography.map((f, i) => `<span style="--i: ${i + 1}"><img src="${src(f)}" alt="" loading="lazy" decoding="async"></span>`),
+    photography.map((f, i) => `<span style="--i: ${i + 1}">${img(f, '(max-width: 767px) 50vw, 300px')}</span>`),
     '        ');

@@ -20,7 +20,7 @@
     }
     function bgUrl(el) {
         if (!el) return '';
-        var d = el.getAttribute('data-bg');
+        var d = el.getAttribute('data-full') || el.getAttribute('data-bg');
         if (d) return d;
         var m = (el.style.backgroundImage || '').match(/url\(["']?(.*?)["']?\)/);
         return m ? m[1] : '';
@@ -34,7 +34,7 @@
             item: '.fx-item',
             info: function (el) {
                 var img = el.querySelector('.fx-media img');
-                return { src: img ? (img.currentSrc || img.src) : '', label: text(el, '.fx-label'), title: text(el, '.fx-title'), caption: text(el, '.fx-caption') };
+                return { src: img ? img.src : '', label: text(el, '.fx-label'), title: text(el, '.fx-title'), caption: text(el, '.fx-caption') };
             }
         },
         {
@@ -43,7 +43,7 @@
             item: 'span',
             info: function (el, i) {
                 var img = el.querySelector('img');
-                return { src: img ? (img.currentSrc || img.src) : '', label: 'Photography', title: 'Photograph ' + (i + 1), caption: '' };
+                return { src: img ? img.src : '', label: 'Photography', title: 'Photograph ' + (i + 1), caption: '' };
             }
         },
         {
